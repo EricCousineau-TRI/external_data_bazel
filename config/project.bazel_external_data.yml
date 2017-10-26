@@ -1,0 +1,35 @@
+# Project configuration.
+project:
+    # For server-side versioning.
+    name: example
+
+# The remote for all child folders, unless changed.
+# Change this to "devel" if you are uploading files to this remote.
+# If you define a custom `.bazel_external_data.yml` in a subproject, ensure that
+# override the "remote"! Otherwise, the remote will leak through.
+subproject:
+    remote: master
+
+remote:
+    master:
+        # Backend used for storing files.
+        backend: girder
+        # Fetch url. Also for pushing, if `pushurl` is not defined.
+        url: https://girder.example.com
+        # Define this if you have a different push / upload mechanism.
+        # pushurl: "..."
+
+        # You may annotate URLs with "[text] " if you wish to differentiate server-specific properties.
+        # This is stripped when resolving the actual URL.
+        # e.g.: 
+        #   url: https://girder.example.com
+        #   pushurl: [push] https://girder.example.com
+        folder_id: <master collection>
+
+    devel:
+        overlay: master
+        backend: girder
+        url: https://girder.example.com
+        # TODO(eric.cousineau): Change to a devel collection once we can distinguish
+        # hashsum uploads by parent collection.
+        folder_id: <devel collection>
