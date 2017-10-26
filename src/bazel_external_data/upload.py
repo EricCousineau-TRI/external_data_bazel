@@ -13,12 +13,9 @@ import argparse
 
 from datetime import datetime
 
-assert __name__ == '__main__'
+from bazel_external_data import util
 
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..')))
-from external_data import util
-
-SHA_SUFFIX = '.sha512'
+SHA_SUFFIX = util.SHA_SUFFIX
 
 def upload(conf, filepath, do_cache):
     if not os.path.isabs(filepath):

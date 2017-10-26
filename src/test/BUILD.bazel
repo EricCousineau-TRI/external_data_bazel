@@ -1,2 +1,8 @@
+py_library(
+    name = "config",
+    srcs = ["bazel_external_data_config.py"],
+    imports = ["."],
+)
 
-
+py_binary(
+)

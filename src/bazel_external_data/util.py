@@ -13,6 +13,7 @@ import time
 # TODO(eric.cousineau): Could this be used for a mirroring / redundancy setup?
 
 cur_dir = os.path.dirname(__file__)
+SHA_SUFFIX = '.sha512'
 
 # http://code.activestate.com/recipes/52308-the-simple-but-handy-collector-of-a-bunch-of-named/
 class Bunch(dict):
