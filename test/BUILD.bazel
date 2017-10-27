@@ -3,3 +3,12 @@ filegroup(
     srcs = [':.custom-sentinel'],
     visibility=["//visibility:public"],
 )
+
+py_test(
+    name = "test_basics",
+    srcs = ["test_basics.py"],
+    data = [
+        "//test/data",
+    ],
+    visibility = ["//visibility:public"],
+)

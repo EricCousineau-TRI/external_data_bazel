@@ -1,0 +1,11 @@
+load("//test/tools:external_data.bzl",
+    "external_data",
+    "external_data_group",
+    "get_original_files",
+)
+
+external_data_group(
+    name = "data",
+    files = get_original_files(glob(['**/*.bin.sha512'])),
+    visibility = ["//visibility:public"],
+)

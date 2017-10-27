@@ -9,13 +9,13 @@ CUSTOM_TOOL = "//test/tools:download"
 def external_data(*args, **kwargs):
     external_data_impl(
         *args,
-        custom_tool = CUSTOM_TOOL,
+        tool = CUSTOM_TOOL,
         **kwargs
     )
 
 def external_data_group(*args, **kwargs):
     external_data_group_impl(
         *args,
-        custom_tool = CUSTOM_TOOL,
+        tool = CUSTOM_TOOL,
         **kwargs
     )

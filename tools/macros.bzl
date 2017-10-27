@@ -8,7 +8,7 @@ SHA_SUFFIX = ".sha512"
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data_impl(file, mode='normal', url=None, tool=None):
+def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None):
     """
     Macro for defining a large file.
 
@@ -38,11 +38,14 @@ def external_data_impl(file, mode='normal', url=None, tool=None):
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +
                   "\n  Using local workspace file in development mode." +
                   "\n  Please upload this file and commit the *{} file.".format(SHA_SUFFIX))
-        native.exports_files([file])
+        native.exports_files(
+            srcs = [file],
+            visibility = visibility,
+        )
     elif mode in ['normal', 'no_cache']:
         name = "download_{}".format(file)
         sha_file = file + SHA_SUFFIX
-        if tool is None:
+        if tool == None:
             fail("Must define custom tool for a custom repository")
 
         # Binary:
@@ -78,32 +81,32 @@ def external_data_impl(file, mode='normal', url=None, tool=None):
           tools = [tool],
           tags = ["external_data"],
           local = 1,  # Just changes `execroot`, but paths are still Bazel-fied.
-          visibility = ["//visibility:public"],
+          visibility = visibility,
         )
     else:
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None):
+def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None):
     """ @see external_data """
-    def external_data(*args, **kwargs):
-        external_data_impl(*args, tool=tool, **kwargs)
 
     if ENABLE_WARN and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
+    kwargs = {'tool': tool, 'visibility': visibility}
+
     for file in files:
         if file not in files_devel:
-            external_data(file, mode)
+            external_data_impl(file, mode, **kwargs)
         else:
-            external_data(file, "devel")
+            external_data_impl(file, "devel", **kwargs)
 
     # Consume leftover `files_devel`.
     devel_only = []
     for file in files_devel:
         if file not in files:
             devel_only.append(file)
-            external_data(file, "devel")
+            external_data_impl(file, "devel", **kwargs)
     if devel_only:
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +

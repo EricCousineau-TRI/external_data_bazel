@@ -16,6 +16,7 @@ py_binary(
     deps = [
         ":config",
     ],
+    visibility = ["//visibility:public"],
 )
 
 py_binary(
