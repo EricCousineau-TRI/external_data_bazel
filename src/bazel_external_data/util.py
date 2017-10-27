@@ -4,6 +4,7 @@ import subprocess
 import sys
 import json
 import time
+import yaml
 
 # TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
 # dependency.
@@ -48,8 +49,8 @@ class ProjectSetup(object):
         # ^ Alternative: Guess project_root and do symlink interface,
         # then try to guess start_dir.
         project_root = find_project_root(start_dir, sentinel)
-        project_config_files = find_project_config_files(project_root)
-        project_config = parse_and_merge_config_files(project_root, config_files)
+        project_config_files = find_project_config_files(project_root, start_dir)
+        project_config = parse_and_merge_config_files(project_root, project_config_files)
         return project_config
 
     def get_backends(self):
@@ -65,7 +66,7 @@ def load_project(filepath):
     # See 'test/bazel_external_data_config'
     import bazel_external_data_config as custom
     setup = custom.get_setup()
-    config = setup.get_project_config(filepath)
+    config = setup.get_config(filepath)
     project = Project(setup, config)
     return project
 
@@ -80,7 +81,7 @@ def _merge_unique(base, new):
     new_keys = set(new.keys())
     # Ensure there is no intersection.
     assert new_keys - old_keys == new_keys
-    base.update(backends)
+    base.update(new)
 
 # Compatibility shim.
 util = sys.modules[__name__]
@@ -104,9 +105,13 @@ class Project(object):
         # Register backends.
         self.register_backends(self.setup.get_backends())
         # Register root scope.
-        self.root_scope = Scope(self, root_config['scope'])
+        self.root_scope = Scope(self, None, root_config['scope'])
 
-    def get_remote(name):
+    def debug_dump_config(self, f = None):
+        # TODO: What about a given Scope node?
+        return yaml.dump(self.root_config, f, default_flow_style=False)
+
+    def get_remote(self, name):
         # On-demand remote retrieval, with robustness against cycles.
         if name in self._remotes:
             return self._remotes[name]
@@ -124,7 +129,7 @@ class Project(object):
             self._remotes[name] = remote
             return remote
 
-    def register_backend(self, backends):
+    def register_backends(self, backends):
         _merge_unique(self._backends, backends)
 
     def load_backend(self, backend_type, config_node):
@@ -158,8 +163,8 @@ class Remote(object):
     def __init__(self, project, name, config_node):
         self.project = project
         self.name = name
-        backend_type = self.config_node['backend']
-        self._backend = self.project.load_backend(backend_type, self.config_node)
+        backend_type = config_node['backend']
+        self._backend = self.project.load_backend(backend_type, config_node)
 
         overlay_name = config_node.get('overlay')
         self._overlay = None
@@ -186,7 +191,8 @@ class Remote(object):
                 # Rethrow
                 raise e
 
-     def _get_sha_cache_path(self, sha, create_dir=False):
+    def _get_sha_cache_path(self, sha, create_dir=False):
+        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff).
         a = sha[0:2]
         b = sha[2:4]
         out_dir = os.path.join(self.project.core.cache_dir, a, b)
@@ -197,7 +203,7 @@ class Remote(object):
     def download_file(self, sha, output_file,
                  use_cache = True, symlink_from_cache = True):
         # Helper functions.
-        def get_cached():
+        def get_cached(skip_sha_check=False):
             # Can use cache. Copy to output path.
             if symlink_from_cache:
                 util.subshell(['ln', '-s', cache_path, output_file])
@@ -205,18 +211,19 @@ class Remote(object):
                 util.subshell(['cp', cache_path, output_file])
                 util.subshell(['chmod', '+w', output_file])
             # On error, remove cached file, and re-download.
-            if not check_sha(sha, output_file, do_throw=False):
-                util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
-                # `os.remove()` will remove read-only files, reguardless.
-                os.remove(cache_path)
-                if os.path.islink(output_file):
-                    # In this situation, the cache was corrupted (somehow), and Bazel
-                    # triggered a recompilation, and we still have a symlink in Bazel-space.
-                    # Remove this symlink, so that we do not download into a symlink (which
-                    # complicates the logic in `get_download_and_cache`). This also allows
-                    # us to "reset" permissions.
-                    os.remove(output_file)
-                get_download_and_cache()
+            if not skip_sha_check:
+                if not check_sha(sha, output_file, do_throw=False):
+                    util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
+                    # `os.remove()` will remove read-only files, reguardless.
+                    os.remove(cache_path)
+                    if os.path.islink(output_file):
+                        # In this situation, the cache was corrupted (somehow), and Bazel
+                        # triggered a recompilation, and we still have a symlink in Bazel-space.
+                        # Remove this symlink, so that we do not download into a symlink (which
+                        # complicates the logic in `get_download_and_cache`). This also allows
+                        # us to "reset" permissions.
+                        os.remove(output_file)
+                    get_download_and_cache()
 
         def get_download(output_file):
             self._download_file_direct(sha, output_file)
@@ -228,7 +235,7 @@ class Remote(object):
                 # Make cache file read-only.
                 util.subshell(['chmod', '-w', cache_path])
             # Use cached file - `get_download()` has already checked the sha.
-            get_cached()
+            get_cached(skip_sha_check=True)
 
         # Check if we need to download.
         if use_cache:
@@ -443,8 +450,8 @@ def find_project_root(start_dir, sentinel):
 #             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
 #     return os.path.dirname(root_file)
 
-CONFIG_FILE = ".bazel_external_data"
-USER_CONFIG = "~/.config/bazel_external_data.user.yml"
+CONFIG_FILE = ".bazel_external_data.yml"
+USER_CONFIG = os.path.expanduser("~/.config/bazel_external_data/config.yml")
 
 def _is_child_path(child_path, parent_path):
     rel_path = os.path.relpath(child_path, parent_path)
@@ -455,7 +462,7 @@ def find_project_config_files(project_root, start_dir, config_file = CONFIG_FILE
                               prefix_set = [USER_CONFIG]):
     # At project root, we *must* have a config file.
     project_config_path = os.path.join(project_root, config_file)
-    assert os.path.isfile(config_path), "Must specify project config"
+    assert os.path.isfile(project_config_path), "Must specify project config"
     config_paths = prefix_set + [project_config_path]
     return config_paths
 
@@ -466,7 +473,7 @@ def _parse_config_file(config_file):
     return config
 
 
-def _merge_config_into(base_config, new_config):
+def _merge_config(base_config, new_config):
     for key, new_value in new_config.iteritems():
         base_value = base_config.get(key)
         if isinstance(base_value, dict):
@@ -477,6 +484,7 @@ def _merge_config_into(base_config, new_config):
             # Overwrite.
             value = new_value
         base_config[key] = value
+    return base_config
 
 
 def parse_and_merge_config_files(project_root, config_files):
@@ -494,7 +502,7 @@ def parse_and_merge_config_files(project_root, config_files):
     for config_file in config_files:
         new_config = _parse_config_file(config_file)
         # TODO(eric.cousineau): Add checks that we have desired keys, e.g. only one project name, etc.
-        _merge_config_into(config, new_config)
+        _merge_config(config, new_config)
     return config
 
 

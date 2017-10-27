@@ -4,9 +4,9 @@ import os
 from bazel_external_data import util
 
 class CustomSetup(util.ProjectSetup):
-    def get_project_config(self, filepath):
+    def get_config(self, filepath):
         sentinel = {'file': '.custom-sentinel'}
-        util.ProjectSetup.get_project_config(self, filepath, sentinel=sentinel)
+        return util.ProjectSetup.get_config(self, filepath, sentinel=sentinel)
 
 def get_setup():
     return CustomSetup()

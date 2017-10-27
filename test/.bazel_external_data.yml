@@ -1,0 +1,12 @@
+# Project configuration.
+project:
+    name: test
+
+scope:
+    remote: master
+
+remote:
+    master:
+        backend: girder
+        url: https://girder.example.com
+        folder_id: <master collection>

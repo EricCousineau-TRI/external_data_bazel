@@ -38,7 +38,7 @@ args = parser.parse_args()
 # Hack to permit running from command-line easily.
 # TODO(eric.cousineau): Require that this is only run from Bazel.
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..')))
-from external_data import util
+from bazel_external_data import util
 
 SHA_SUFFIX = util.SHA_SUFFIX
 
@@ -74,6 +74,7 @@ def do_download(project, output_file, sha_file, remote_in=None):
                          symlink_from_cache=args.symlink_from_cache)
 
 project = util.load_project(os.getcwd())
+project.debug_dump_config(sys.stdout)
 
 remote_in = None
 if args.remote:
