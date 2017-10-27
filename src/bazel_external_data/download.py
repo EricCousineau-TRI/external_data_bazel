@@ -32,6 +32,8 @@ parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 parser.add_argument('--debug_config', action='store_true',
                     help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
+parser.add_argument('--debug_remote', action='store_true',
+                    help='Dump configuration for the chain of scopes and remotes for the files.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
@@ -71,6 +73,10 @@ def do_download(project, sha_file, output_file, remote_in=None):
         remote = project.load_remote(sha_file)
     else:
         remote = remote_in
+
+    if args.debug_remote:
+        project.debug_dump_remote(remote, sys.stdout)
+
     remote.download_file(sha, output_file,
                          use_cache=use_cache,
                          symlink_from_cache=args.symlink_from_cache)
@@ -82,7 +88,7 @@ if args.debug_config:
 remote_in = None
 if args.remote:
     remote_config = yaml.load(args.remote)
-    remote_in = util.Remote(project, 'command_line', remote_config)
+    remote_in = project.load_remote_command_line(remote_config)
 
 if args.output_file:
     if len(args.sha_files) != 1:

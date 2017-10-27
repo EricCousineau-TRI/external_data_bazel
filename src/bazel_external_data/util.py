@@ -42,6 +42,8 @@ def get_backends():
         "direct": DirectBackend,
     }
 
+# TODO: Cache fake Bazel root, and use this to get relative workspace path.
+
 class ProjectSetup(object):
     def __init__(self):
         pass
@@ -93,9 +95,10 @@ util = sys.modules[__name__]
 class Scope(object):
     def __init__(self, project, config_node, parent):
         self._project = project
-        self._parent = parent
+        self.parent = parent
         remote_name = config_node['remote']
 
+        self.config_node = config_node  # For debugging.
         self._remotes_config = config_node['remotes']
         self._remotes = {}
         self._remote_is_loading = []
@@ -107,12 +110,12 @@ class Scope(object):
 
     def get_remote(self, name):
         if name == '..':
-            assert self._parent, "Attempting to access parent remote at root scope?"
-            return self._parent.remote
+            assert self.parent, "Attempting to access parent remote at root scope?"
+            return self.parent.remote
         if not self.has_remote(name):
             # Use parent if this scope does not contain the desired remote.
-            if self._parent:
-                self._parent.get_remote(name)
+            if self.parent:
+                self.parent.get_remote(name)
             else:
                 raise RuntimeError("Unknown remote '{}'".format(name))
         # On-demand remote retrieval, with robustness against cycles.
@@ -125,12 +128,18 @@ class Scope(object):
             self._remote_is_loading.append(name)
             remote_node = self._remotes_config[name]
             # Load remote.
-            remote = Remote(self._project, self, name, remote_node)
+            remote = Remote(self._project, name, remote_node, scope=self)
             # Update.
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
             return remote
 
+def find_key(d, value):
+    # https://stackoverflow.com/questions/8023306/get-key-by-value-in-dictionary
+    if value in d.values():
+        return d.keys()[d.values().index(value)]
+    else:
+        return None
 
 class Project(object):
     def __init__(self, setup, root_config):
@@ -148,10 +157,24 @@ class Project(object):
         # Create root scope and parse base remotes.
         self._scopes = {}
         self.root_scope = Scope(self, root_config['scope'], None)
+        self._scopes['<project config>'] = self.root_scope
 
     def debug_dump_config(self, f = None):
         # TODO: What about a given Scope node?
         return yaml.dump(self.root_config, f, default_flow_style=False)
+
+    def debug_dump_remote(self, remote, f = None, dump_all = False):
+        scope = remote.scope
+        # For each scope, print its respective filepath.
+        scope_dump = []
+        while scope is not None:
+            scope_file = find_key(self._scopes, scope)
+            scope_dump.append({'filepath': scope_file, 'value': scope.config_node})
+            if dump_all or scope.remote.has_parent_overlay():
+                scope = scope.parent
+            else:
+                break
+        return yaml.dump({'scopes': scope_dump}, f, default_flow_style=False)
 
     def register_backends(self, backends):
         _merge_unique(self._backends, backends)
@@ -160,8 +183,7 @@ class Project(object):
         backend_cls = self._backends[backend_type]
         return backend_cls(self, config_node)
 
-    def load_remote(self, filepath):
-        """ Load remote for a given file to either fetch or push a file """
+    def load_scope(self, filepath):
         config_files = self.setup.get_scope_config_files(self.root, filepath)
         scope = self.root_scope
         for config_file in config_files:
@@ -171,8 +193,30 @@ class Project(object):
                 # Parse the scope config file.
                 config = _parse_config_file(config_file)
                 # Load scope.
-                scope = Scope(self, parent, config['scope'])
+                scope = Scope(self, config['scope'], parent)
                 self._scopes[config_file] = scope
+        return scope
+
+    def load_remote(self, filepath):
+        """ Load remote for a given file to either fetch or push a file """
+        return self.load_scope(filepath).remote
+
+    def load_remote_command_line(self, remote_config, start_dir=None):
+        file_name = '<command_line>'
+        remote_name = 'command_line'
+        assert file_name not in self._scopes
+        if start_dir is None:
+            parent = self.root_scope
+        else:
+            parent = self.load_scope(start_dir)
+        scope_config = {
+            'remote': remote_name,
+            'remotes': {
+                remote_name: remote_config,
+            },
+        }
+        scope = util.Scope(self, scope_config, parent)
+        self._scopes[file_name] = scope
         return scope.remote
 
 
@@ -180,8 +224,12 @@ class DownloadError(RuntimeError):
     pass
 
 class Remote(object):
-    def __init__(self, project, scope, name, config_node):
+    def __init__(self, project, name, config_node, scope = None):
         self.project = project
+        if scope:
+            self.scope = scope
+        else:
+            self.scope = project.root_scope
         self.name = name
         backend_type = config_node['backend']
         self._backend = self.project.load_backend(backend_type, config_node)
@@ -191,11 +239,18 @@ class Remote(object):
         if overlay_name is not None:
             self._overlay = self.scope.get_remote(overlay_name)
 
+    def has_overlay(self):
+        return self._overlay is not None
+
+    def has_parent_overlay(self):
+        # We should have not overlays that are descendants of this scope; only ancestors.
+        return self.has_overlay() and self._overlay.scope != self.scope
+
     # Will this be used?
     def _has_file(self, sha):
         if self._backend.has_file(sha):
             return True
-        elif self._overlay and self._overlay.has_file(sha):
+        elif self.has_overlay() and self._overlay.has_file(sha):
             return True
         else:
             return False
@@ -205,7 +260,7 @@ class Remote(object):
         try:
             self._backend.download_file(sha, output_path)
         except DownloadError as e:
-            if self._overlay:
+            if self.has_overlay():
                 self._overlay.download_file(sha, output_path)
             else:
                 # Rethrow
@@ -420,42 +475,51 @@ class DirectBackend(Backend):
         # Ignore the SHA. Just download. Everything else will validate.
         curl('-L -o {output_file} {url}'.format(url=self._url, output_file=output_file))
 
+guess_at_end = True
 
-def guess_start_dir(filepath):
-    if os.path.islink(filepath):
-        # If this is a link to *.sha512, assume we're in Bazel land, and attempt to resolve the link.
-        filepath = os.path.readlink(filepath)
-        assert os.path.isabs(filepath)
-    if os.path.isdir(filepath):
-        start_dir = filepath
-    else:
-        start_dir = os.path.dirname(filepath)
-    return start_dir
+if not guess_at_end:
 
+    def guess_start_dir(filepath):
+        if os.path.islink(filepath):
+            # If this is a link to *.sha512, assume we're in Bazel land, and attempt to resolve the link.
+            filepath = os.readlink(filepath)
+            assert os.path.isabs(filepath)
+        if os.path.isdir(filepath):
+            start_dir = filepath
+        else:
+            start_dir = os.path.dirname(filepath)
+        return start_dir
 
-def find_project_root(start_dir, sentinel):
-    root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
-    return os.path.dirname(root_file)
+    def find_project_root(start_dir, sentinel):
+        root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+        return os.path.dirname(root_file)
 
-# def find_project_root_symlink(start_dir):
-#     # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
-#     # However, because Bazel does symlink magic that is not easily parseable,
-#     # we should not rely on something like `symlink -f ${file}`, because
-#     # if a directory is symlink'd, then we will go to the wrong directory.
-#     # Instead, we should just do one `readlink` on the sentinel, and expect
-#     # that it is not a link.
-#     # Alternatives:
-#     #  (1) Custom `.project-root` sentinel. Fine, but useful for accurate versioning,
-#     # which is the entire point of `.project-root`.
-#     #  (2) `.git` - What we really want, just need to make sure Git sees this.
-#     sentinel = '.git'
-#     root_file = find_file_sentinel(start_dir, sentinel, file_type='any')
-#     if os.path.islink(root_file):
-#         root_file = os.readlink(root_file)
-#         assert os.path.isabs(root_file)
-#         if os.path.islink(root_file):
-#             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
-#     return os.path.dirname(root_file)
+else:
+
+    def guess_start_dir(filepath):
+        if os.path.isdir(filepath):
+            return filepath
+        else:
+            return os.path.dirname(filepath)
+
+    def find_project_root(start_dir, sentinel):
+        # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
+        # However, because Bazel does symlink magic that is not easily parseable,
+        # we should not rely on something like `symlink -f ${file}`, because
+        # if a directory is symlink'd, then we will go to the wrong directory.
+        # Instead, we should just do one `readlink` on the sentinel, and expect
+        # that it is not a link.
+        # Alternatives:
+        #  (1) Custom `.project-root` sentinel. Fine, but useful for accurate versioning,
+        # which is the entire point of `.project-root`.
+        #  (2) `.git` - What we really want, just need to make sure Git sees this.
+        root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+        if os.path.islink(root_file):
+            root_file = os.readlink(root_file)
+            assert os.path.isabs(root_file)
+            if os.path.islink(root_file):
+                raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
+        return os.path.dirname(root_file)
 
 CONFIG_FILE = ".bazel_external_data.yml"
 USER_CONFIG = os.path.expanduser("~/.config/bazel_external_data/config.yml")
@@ -471,7 +535,7 @@ def find_scope_config_files(project_root, start_dir, config_file = CONFIG_FILE):
     while cur_dir != project_root:
         test_path = os.path.join(cur_dir, config_file)
         if os.path.isfile(test_path):
-            config_files.prepend(test_path)
+            config_files.insert(0, test_path)
         cur_dir = os.path.dirname(cur_dir)
     return config_files
 
