@@ -39,9 +39,9 @@ class MockBackend(util.Backend):
             raise util.DownloadError("Unknown sha: {}".format(sha))
         util.subshell(['cp', filepath, output_file])
 
-    def upload_file(self, filepath):
+    def upload_file(self, sha, filepath):
         sha = util.compute_sha(filepath)
-        assert sha not in self._map[sha]
+        assert sha not in self._map
         # Just store the filepath transitively.
         self._map[sha] = filepath
 

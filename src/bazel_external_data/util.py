@@ -348,7 +348,7 @@ class Backend(object):
     def download_file(self, sha, output_path):
         raise RuntimeError("Downloading not supported for this backend")
 
-    def upload_file(self, filepath):
+    def upload_file(self, sha, filepath):
         raise RuntimeError("Uploading not supported for this backend")
 
 
@@ -438,10 +438,7 @@ class GirderBackend(Backend):
             self._girder_client.authenticate(apiKey=self._api_key)
         return self._girder_client
 
-    def upload_file(self, filepath, sha=None):
-        if sha is None:
-            sha = compute_sha(filepath)
-
+    def upload_file(self, sha, filepath):
         item_name = "%s %s" % (os.path.basename(filepath), datetime.utcnow().isoformat())
 
         versioned_filepath = os.path.relpath(filepath, self.project.root)

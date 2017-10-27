@@ -32,7 +32,7 @@ def upload(project, filepath):
     sha_file = filepath + SHA_SUFFIX
     with open(sha_file, 'w') as fd:
         print("Updating sha file: {}".format(sha_file))
-        fd.write(sha)
+        fd.write(sha + "\n")
 
     print("[ Done ]")
 
