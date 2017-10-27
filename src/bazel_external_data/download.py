@@ -30,6 +30,8 @@ parser.add_argument('-o', '--output', dest='output_file', type=str,
                     help='Output destination. If specified, only one input file may be provided.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
+parser.add_argument('--debug_config', action='store_true',
+                    help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
@@ -42,7 +44,7 @@ from bazel_external_data import util
 
 SHA_SUFFIX = util.SHA_SUFFIX
 
-def do_download(project, output_file, sha_file, remote_in=None):
+def do_download(project, sha_file, output_file, remote_in=None):
     if not args.allow_relpath:
         # Ensure that we have absolute file paths.
         files = [sha_file, output_file]
@@ -74,7 +76,8 @@ def do_download(project, output_file, sha_file, remote_in=None):
                          symlink_from_cache=args.symlink_from_cache)
 
 project = util.load_project(os.getcwd())
-project.debug_dump_config(sys.stdout)
+if args.debug_config:
+    project.debug_dump_config(sys.stdout)
 
 remote_in = None
 if args.remote:
@@ -84,8 +87,8 @@ if args.remote:
 if args.output_file:
     if len(args.sha_files) != 1:
         raise RuntimeError("Can only specify one input file with --output")
-    do_download(project, output_file=args.output_file, sha_file=args.sha_files[0], remote_in=remote_in)
+    do_download(project, args.sha_files[0], args.output_file, remote_in=remote_in)
 else:
     for sha_file in args.sha_files:
         output_file = sha_file[:-len(SHA_SUFFIX)]
-        do_download(project, output_file=output_file, sha_file=sha_file, remote_in=remote_in)
+        do_download(project, sha_file, output_file, remote_in=remote_in)

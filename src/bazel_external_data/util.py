@@ -73,7 +73,7 @@ def load_project(filepath):
 
 class Core(object):
     def __init__(self, config_node):
-        self.cache_dir = config_node['cache_dir']
+        self.cache_dir = os.path.expanduser(config_node['cache_dir'])
 
 def _merge_unique(base, new):
     # Merge, ensuring there are no shared keys.
@@ -310,12 +310,11 @@ def reduce_url(url_full):
 
 
 def curl(args):
-    # TODO(eric.cousineau): Uncomment this.
-    # try:
-    return subshell("curl {}".format(args))
-    # except e as subprocess.CalledProcessError:
-    #     # Assume any error is just due to downloading.
-    #     raise DownloadError(e)
+    try:
+        return subshell("curl {}".format(args))
+    except subprocess.CalledProcessError as e:
+        # Assume any error is just due to downloading.
+        raise DownloadError(e)
 
 
 class GirderBackend(Backend):
@@ -385,7 +384,7 @@ class GirderBackend(Backend):
         versioned_filepath = os.path.relpath(filepath, self.project.root)
         if versioned_filepath.startswith('..'):
             raise RuntimeError("File to upload, '{}', must be under '{}'".format(filepath, self.project.root))
-        
+
         print("api_url ............: %s" % self._api_url)
         print("folder_id ..........: %s" % self._folder_id)
         print("filepath ...........: %s" % filepath)
