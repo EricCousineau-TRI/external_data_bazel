@@ -7,7 +7,7 @@ core:
 
 # Girder Backend settings.
 girder:
-    server:
+    url:
         "https://girder.example.com":
             # Authentication. Leave empty if no authentication needed.
             "api_key": "<insert api key here>",

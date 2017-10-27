@@ -7,7 +7,7 @@ project:
 # Change this to "devel" if you are uploading files to this remote.
 # If you define a custom `.bazel_external_data.yml` in a subproject, ensure that
 # override the "remote"! Otherwise, the remote will leak through.
-directory:
+scope:
     remote: master
 
 remote:
@@ -18,9 +18,9 @@ remote:
         url: https://girder.example.com
         # Define this if you have a different push / upload mechanism.
         # pushurl: "..."
-
-        # You may annotate URLs with "[text] " if you wish to differentiate server-specific properties.
+        # You may annotate URLs with "[text] " if you wish to differentiate server-specific properties (e.g. "[push] ").
         # This is stripped when resolving the actual URL.
+
         # e.g.: 
         #   url: https://girder.example.com
         #   pushurl: [push] https://girder.example.com
