@@ -201,7 +201,7 @@ class Remote(object):
         return os.path.join(out_dir, sha)
 
     def download_file(self, sha, output_file,
-                 use_cache = True, symlink_from_cache = True):
+                      use_cache = True, symlink_from_cache = True):
         # Helper functions.
         def get_cached(skip_sha_check=False):
             # Can use cache. Copy to output path.
@@ -236,6 +236,8 @@ class Remote(object):
                 util.subshell(['chmod', '-w', cache_path])
             # Use cached file - `get_download()` has already checked the sha.
             get_cached(skip_sha_check=True)
+
+        # TODO(eric.cousineau): Throw an error if the file already exists?
 
         # Check if we need to download.
         if use_cache:

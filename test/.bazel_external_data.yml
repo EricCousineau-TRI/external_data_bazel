@@ -7,6 +7,5 @@ scope:
 
 remote:
     master:
-        backend: girder
-        url: https://girder.example.com
-        folder_id: <master collection>
+        backend: mock
+        dir: mock_backend
