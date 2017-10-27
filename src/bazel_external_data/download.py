@@ -60,7 +60,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
         if args.force:
             os.remove(output_file)
         else:
-            raise RuntimeError("Output file already exists (use `--force` to overwrite): {}".format(output_file))
+            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
     # Get the sha.
     if not os.path.isfile(sha_file):

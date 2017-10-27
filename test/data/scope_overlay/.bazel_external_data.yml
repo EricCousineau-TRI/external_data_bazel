@@ -2,7 +2,7 @@ scope:
     remote: test_scope_overlay
 
     remotes:
-        test_overlay:
+        test_scope_overlay:
             overlay: ..
             backend: mock
             dir: mock/backend_child
