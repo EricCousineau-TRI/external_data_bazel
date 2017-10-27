@@ -8,7 +8,7 @@ SHA_SUFFIX = ".sha512"
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data(file, mode='normal'):
+def external_data(file, mode='normal', url=None):
     """
     Macro for defining a large file.
 
@@ -17,6 +17,10 @@ def external_data(file, mode='normal'):
         'normal' - Use cached file if possible. Otherwise download the file.
         'devel' - Use local workspace (for development).
         'no_cache' - Download the file, do not use the cache.
+    url:
+        If this is just a file that `curl` can fetch, specify this URL.
+        If `None`, this will use the `.bazel_external_project` configuration files to]
+        determine how to fetch the file.
     """
 
     # Cannot access environment for this file...
@@ -54,6 +58,9 @@ def external_data(file, mode='normal'):
             # with `--spawn_strategy=standalone`, there should be a permission error
             # when attempting to write to the file.
             cmd += "--symlink_from_cache "
+        # Argument: Specific URL.
+        if url:
+            cmd += "--url={} ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.

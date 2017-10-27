@@ -21,6 +21,185 @@ class Bunch(dict):
         dict.__init__(self, kw)
         self.__dict__ = self
 
+def get_backends():
+    return {
+        "girder": GirderBackend,
+    }
+
+def get_file_setup(filepath):
+    # Use custom import to allow modular configuration.
+    # See 'test/bazel_external_data_config'
+    import bazel_external_data_config as project_config
+    return project_config.get_config(filepath)
+    config = _get_config(filepath)
+    core = Core(config['core'])
+    project = Project(core, config['project'], config['remote'])
+
+    # Register backends.
+    project.register_backends(get_backends())
+    get_additional_backends = getattr(project_config, 'get_additional_backends')
+    if get_additional_backends is not None:
+        project.register_backends(get_additional_backends())
+
+    directory = Directory(project, config['directory'])
+    return directory
+
+
+class Core(object):
+    def __init__(self, config_node):
+        self.cache_dir = config_node['cache_dir']
+
+
+class Project(object):
+    def __init__(self, core, config_node, remote_config):
+        self.core = core
+        self.name = config_node['name']
+        self.root = config_node['root']
+        self._remotes = {}
+        self._remote_config = remote_config
+        self._remote_is_loading = []
+
+    def get_remote(name):
+        # On-demand remote retrieval, with robustness against cycles.
+        if name in self._remotes:
+            return self._remotes[name]
+        else:
+            if name in self._remote_is_loading:
+                raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
+            self._remote_is_loading.append(name)
+            remote_node = self._remote_config.get(name)
+            assert remote_node is not None, "Unknown remote: {}".format(name)
+            remote = Remote(self, name, remote_node)
+            self._remote_is_loading.remove(name)
+            self._remotes[name] = remote
+            return remote
+
+class DownloadError(RuntimeError):
+    pass
+
+class Remote(object):
+    def __init__(self, project, name, config_node):
+        self.project = project
+        self.name = name
+        backend_type = self.config_node['backend']
+        self._backend = self.project.load_backend(backend_type, self.config_node)
+
+        overlay_name = config_node.get('overlay')
+        self._overlay = None
+        if overlay_name is not None:
+            self._overlay = self.project.get_remote(overlay_name)
+
+    # Will this be used?
+    def _has_file(self, sha):
+        if self._backend.has_file(sha):
+            return True
+        elif self._overlay and self._overlay.has_file(sha):
+            return True
+        else:
+            return False
+
+    def _download_file(self, sha, output_path):
+        # TODO: Make this more efficient...
+        try:
+            self._backend.download_file(sha, output_path)
+        except e as DownloadError:
+            if self._overlay:
+                self._overlay.download_file(sha, output_path)
+            else:
+                # Rethrow
+                raise e
+
+    def get_file(self, sha, output_path,
+                 use_cache = True, symlink_from_cache = True):
+        
+
+    def upload_file(self, filepath):
+        sha = compute_sha(filepath)
+        if self._backend.has_file(sha):
+            print("File already exists")
+            # Write SHA-file.
+        else:
+            self._backend.upload_file(sha, filepath)
+
+
+class Subproject(object):
+    def __init__(self, project, config_node):
+        self.project = project
+        remote_name = config_node['remote']
+        self.remote = self.project.get_remote(remote_name)
+
+
+class Backend(object):
+    def __init__(self, root_config, config_node):
+        pass
+
+    def has_file(self, sha):
+        pass
+
+    def download_file(self, sha, output_path):
+        pass
+
+    def upload_file(self, sha, filepath):
+        pass
+
+def get_chain(d, key_chain, default=None):
+    value = d
+    if value is None:
+        return default
+    for key in key_chain:
+        if key in value:
+            value = value[key]
+        else:
+            return default
+    return value
+
+
+def reduce_url(url_full):
+    begin = '['
+    end = '] '
+    if url_full.startswith(begin):
+        # Scan until we find '] '
+        fin = url_full.index(end)
+        url = url_full[fin + len(end):]
+    else:
+        url = url_full
+    return url
+
+
+class GirderBackend(Backend):
+    def __init__(self, root_config, config_node):
+        Backend.__init__(self, root_config, config_node)
+
+        url_full = config_node['url']
+        self._url = reduce_url(url_full)
+        self._folder_id = config_node['folder_id']
+        # Get (optional) authentication information.
+        server_node = get_chain(root_config, ['girder', 'server', url_full])
+        self._api_key = get_chain(root_config, ['api_key'])
+        self._token = None
+
+    def _authenticate_if_needed(self):
+        if self._api_key is not None:
+            self._token = ...
+
+    def has_file(self, sha):
+        """ Returns true if the given SHA exists on the given server. """
+        # TODO(eric.cousineau): Is there a quicker way to do this???
+        # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
+        # This is necessary if we have users with the same file?
+        # What about authentication? Optional authentication / public access?
+        url = "{conf.api_url}/file/hashsum/sha512/{sha}/download".format(conf=conf, sha=sha)
+        first_line = subshell(
+            'curl -s -H "Girder-Token: {conf.token}" --head "{url}" | head -n 1'.format(conf=conf, url=url))
+        if first_line == "HTTP/1.1 404 Not Found":
+            return False
+        elif first_line == "HTTP/1.1 303 See Other":
+            return True
+        else:
+            raise RuntimeError("Unknown response: {}".format(first_line))
+
+
+
 class Config(Bunch):
     def __init__(self, project_root, remote=None, mode='download'):
         Bunch.__init__(self)
@@ -111,7 +290,22 @@ def get_sha_cache_path(conf, sha, create_dir=False):
     return os.path.join(out_dir, sha)
 
 
-def find_project_root(start_dir):
+def guess_start_dir(filepath):
+    if os.path.islink(filepath):
+        # If this is a link to *.sha512, assume we're in Bazel land, and attempt to resolve the link.
+        filepath = os.path.readlink(filepath)
+        assert os.path.isabs(filepath)
+    if os.path.isdir(filepath):
+        start_dir = filepath
+    else:
+        start_dir = os.path.dirname(filepath)
+    return start_dir
+
+def find_project_root(start_dir, sentinel):
+    root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+    return os.path.dirname(root_file)
+
+def find_project_root_symlink(start_dir):
     # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
     # However, because Bazel does symlink magic that is not easily parseable,
     # we should not rely on something like `symlink -f ${file}`, because
@@ -130,6 +324,69 @@ def find_project_root(start_dir):
         if os.path.islink(root_file):
             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
     return os.path.dirname(root_file)
+
+CONFIG_FILE = ".bazel_external_data"
+USER_CONFIG = "~/.config/bazel_external_data.user.yml"
+
+def _is_child_path(child_path, parent_path):
+    rel_path = os.path.relpath(child_path, parent_path)
+    return not rel_path.startswith('..' + os.path.sep)
+
+
+def find_config_files(project_root, start_dir, config_file = CONFIG_FILE,
+                      prefix_set = [USER_CONFIG]):
+    cur_dir = start_dir
+    subproject_config_paths = []
+    # Find sub-project
+    assert _is_child_path(start_dir, project_root)
+    while cur_dir != project_root:
+        config_path = os.path.join(cur_dir, config_file)
+        if os.path.isfile(config_path):
+            subproject_config_paths.prepend(config_path)
+        cur_dir = os.path.dirname(cur_dir)
+    # At project root, we *must* have a config file.
+    project_config_path = os.path.join(project_root, config_file)
+    assert os.path.isfile(config_path), "Must specify project config"
+    config_paths = prefix_set + [project_config_path] + subproject_config_paths
+    return config_paths
+
+
+def _parse_config_file(config_file):
+    with open(config_file) as f:
+        config = yaml.load(f)
+    return config
+
+
+def _merge_config_into(base_config, new_config):
+    for key, new_value in new_config.iteritems():
+        base_value = base_config.get(key)
+        if isinstance(base_value, dict):
+            assert isinstance(new_value, dict), "New value must be dict: {} - {}".format(key, new_value)
+            # Recurse.
+            value = _merge_config(base_value, new_value)
+        else:
+            # Overwrite.
+            value = new_value
+        base_config[key] = value
+
+
+def parse_and_merge_config_files(project_root, config_files):
+    # Define base-level configuration (for defaults and debugging).
+    config = {
+        "core": {
+            "cache_dir": "~/.cache/bazel_external_data",
+        },
+        "project": {
+            "root": project_root,
+            "config_files": config_files,
+        },
+    }
+    # Parse all config files.
+    for config_file in config_files:
+        new_config = _parse_config_file(config_file)
+        # TODO(eric.cousineau): Add checks that we have desired keys, e.g. only one project name, etc.
+        _merge_config_into(config, new_config)
+    return config
 
 
 # --- General Utilities ---
