@@ -1,6 +1,8 @@
-subproject:
-    remote: custom
+scope:
+    remote: test_overlay
 
 remote:
-    custom:
-        backend: file
+    test_overlay:
+        backend: mock
+        overlay: master
+        dir: mock_backend_overlay
