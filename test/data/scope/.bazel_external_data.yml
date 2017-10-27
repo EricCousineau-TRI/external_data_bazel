@@ -1,8 +1,8 @@
 scope:
     remote: test_overlay
 
-remote:
-    test_overlay:
-        backend: mock
-        overlay: <parent>
-        dir: mock_backend_overlay
+    remotes:
+        test_overlay:
+            overlay: ..
+            backend: mock
+            dir: mock_backend_overlay

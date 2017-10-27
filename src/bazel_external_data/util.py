@@ -92,14 +92,6 @@ class Scope(object):
         self.project = project
         self.parent = parent
         remote_name = config_node['remote_selected']
-        self._remote_provider = RemoteProvider()
-        self.remote = self.project.get_remote(remote_name)
-
-
-class RemoteProvider(object):
-    def __init__(self, project, scope, remote_config):
-        self.project = project
-        self.scope = scope
 
         self._remotes_config = remote_config
         self._remotes = {}
@@ -107,7 +99,18 @@ class RemoteProvider(object):
         self._backends = {}
         self._scopes = {}
 
+        self.remote = self.get_remote(remote_name)
+
+    def has_remote(self, name):
+        return name in self._remotes or name in self._remotes_config
+
     def get_remote(self, name):
+        if not self.has_remote(name):
+            # Change parent
+            if self.parent:
+                self.parent.get_remote(name)
+            else:
+                raise RuntimeError()
         # On-demand remote retrieval, with robustness against cycles.
         if name in self._remotes:
             return self._remotes[name]
@@ -116,8 +119,7 @@ class RemoteProvider(object):
             if name in self._remote_is_loading:
                 raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
             self._remote_is_loading.append(name)
-            remote_node = self._remotes_config.get(name)
-            assert remote_node is not None, "Unknown remote: {}".format(name)
+            remote_node = self._remotes_config[name]
             # Load remote.
             remote = Remote(self, name, remote_node)
             # Update.
