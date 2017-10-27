@@ -8,4 +8,4 @@ scope:
     remotes:
         master:
             backend: mock
-            dir: mock_backend
+            dir: mock/backend_root
