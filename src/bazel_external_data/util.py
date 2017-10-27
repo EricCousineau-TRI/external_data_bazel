@@ -6,6 +6,9 @@ import json
 import time
 import yaml
 
+# TODO: Rename `Project` -> `Workspace`
+# TODO: Rename `Scope` -> `Package`
+
 # TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
 # dependency.
 # If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
@@ -86,18 +89,16 @@ def _merge_unique(base, new):
 # Compatibility shim.
 util = sys.modules[__name__]
 
-# TODO: Consider discarding this class.
-class Scope(object):
-    def __init__(self, project, parent, config_node):
-        self.project = project
-        self.parent = parent
-        remote_name = config_node['remote_selected']
 
-        self._remotes_config = remote_config
+class Scope(object):
+    def __init__(self, project, config_node, parent):
+        self._project = project
+        self._parent = parent
+        remote_name = config_node['remote']
+
+        self._remotes_config = config_node['remotes']
         self._remotes = {}
         self._remote_is_loading = []
-        self._backends = {}
-        self._scopes = {}
 
         self.remote = self.get_remote(remote_name)
 
@@ -105,12 +106,15 @@ class Scope(object):
         return name in self._remotes or name in self._remotes_config
 
     def get_remote(self, name):
+        if name == '..':
+            assert self._parent, "Attempting to access parent remote at root scope?"
+            return self._parent.remote
         if not self.has_remote(name):
-            # Change parent
-            if self.parent:
-                self.parent.get_remote(name)
+            # Use parent if this scope does not contain the desired remote.
+            if self._parent:
+                self._parent.get_remote(name)
             else:
-                raise RuntimeError()
+                raise RuntimeError("Unknown remote '{}'".format(name))
         # On-demand remote retrieval, with robustness against cycles.
         if name in self._remotes:
             return self._remotes[name]
@@ -121,7 +125,7 @@ class Scope(object):
             self._remote_is_loading.append(name)
             remote_node = self._remotes_config[name]
             # Load remote.
-            remote = Remote(self, name, remote_node)
+            remote = Remote(self._project, self, name, remote_node)
             # Update.
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
@@ -137,12 +141,13 @@ class Project(object):
         config_node = root_config['project']
         self.name = config_node['name']
         self.root = config_node['root']
-        self._remote_provider = RemoteProvider(
 
         # Register backends.
+        self._backends = {}
         self.register_backends(self.setup.get_backends())
-        # Register root scope.
-        self.root_scope = Scope(self, None, root_config['scope'])
+        # Create root scope and parse base remotes.
+        self._scopes = {}
+        self.root_scope = Scope(self, root_config['scope'], None)
 
     def debug_dump_config(self, f = None):
         # TODO: What about a given Scope node?
@@ -165,10 +170,6 @@ class Project(object):
             if scope is None:
                 # Parse the scope config file.
                 config = _parse_config_file(config_file)
-                # Add remotes to allow them to be loaded, if needed.
-                new_remotes = config.get('remote')
-                if new_remotes:
-                    _merge_unique(self._remotes_config, new_remotes)
                 # Load scope.
                 scope = Scope(self, parent, config['scope'])
                 self._scopes[config_file] = scope
@@ -179,7 +180,7 @@ class DownloadError(RuntimeError):
     pass
 
 class Remote(object):
-    def __init__(self, project, name, config_node):
+    def __init__(self, project, scope, name, config_node):
         self.project = project
         self.name = name
         backend_type = config_node['backend']
@@ -188,7 +189,7 @@ class Remote(object):
         overlay_name = config_node.get('overlay')
         self._overlay = None
         if overlay_name is not None:
-            self._overlay = self.project.get_remote(overlay_name)
+            self._overlay = self.scope.get_remote(overlay_name)
 
     # Will this be used?
     def _has_file(self, sha):
@@ -211,7 +212,7 @@ class Remote(object):
                 raise e
 
     def _get_sha_cache_path(self, sha, create_dir=False):
-        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff).
+        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
         a = sha[0:2]
         b = sha[2:4]
         out_dir = os.path.join(self.project.core.cache_dir, a, b)
@@ -279,12 +280,7 @@ class Remote(object):
             self._backend.upload_file(sha, filepath)
         return sha
 
-        # Defer writing SHA to CLI.
-        # # Write SHA-file.
-        # sha_file = filepath + SHA_SUFFIX
-        # with open(sha_file, 'w') as fd:
-        #     print("Updating sha file: {}".format(sha_file))
-        #     fd.write(sha)
+
 
 
 class Backend(object):
@@ -538,16 +534,15 @@ def parse_and_merge_config_files(project_root, config_files):
 def _lock_path(filepath):
     return filepath + ".lock"
 
-def wait_file_read_lock(filepath, timeout=60):
-    timeout = 60
+def wait_file_read_lock(filepath, timeout=60, interval=0.01):
     lock = _lock_path(filepath)
     if os.path.isfile(lock):
         now = time.time()
         while os.path.isfile(lock):
-            time.sleep(0.1)
+            time.sleep(interval)
             elapsed = time.time() - now
             if elapsed > timeout:
-                raise RuntimeError()
+                raise RuntimeError("Timeout at {}s when attempting to acquire lock: {}".format(timeout, lock))
 
 class FileWriteLock(object):
     def __init__(self, filepath):
