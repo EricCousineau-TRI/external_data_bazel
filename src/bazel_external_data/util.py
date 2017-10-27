@@ -15,6 +15,9 @@ import time
 cur_dir = os.path.dirname(__file__)
 SHA_SUFFIX = '.sha512'
 
+# TODO(eric.cousineau): Make a hashing setup, that defines a key for the algorithm, a suffix,
+# and a computation / check method.
+
 def compute_sha(filepath):
     sha = subshell(['sha512sum', filepath]).split(' ')[0]
     return sha
@@ -172,7 +175,7 @@ class Remote(object):
         else:
             return False
 
-    def _download_file(self, sha, output_path):
+    def _download_file_direct(self, sha, output_path):
         # TODO: Make this more efficient...
         try:
             self._backend.download_file(sha, output_path)
@@ -191,8 +194,7 @@ class Remote(object):
             os.makedirs(out_dir)
         return os.path.join(out_dir, sha)
 
-
-    def fetch_file(self, sha, output_file,
+    def download_file(self, sha, output_file,
                  use_cache = True, symlink_from_cache = True):
         # Helper functions.
         def get_cached():
@@ -217,7 +219,7 @@ class Remote(object):
                 get_download_and_cache()
 
         def get_download(output_file):
-            self._download_file(sha, output_file)
+            self._download_file_direct(sha, output_file)
             check_sha(sha, output_file)
 
         def get_download_and_cache():
@@ -241,7 +243,7 @@ class Remote(object):
             get_download(output_file)
 
 
-    def push_file(self, filepath):
+    def upload_file(self, filepath):
         sha = compute_sha(filepath)
         if self._backend.has_file(sha):
             print("File already uploaded")
@@ -276,7 +278,7 @@ class Backend(object):
     def download_file(self, sha, output_path):
         raise RuntimeError("Downloading not supported for this backend")
 
-    def upload_file(self, sha, filepath):
+    def upload_file(self, filepath):
         raise RuntimeError("Uploading not supported for this backend")
 
 
@@ -323,17 +325,10 @@ class GirderBackend(Backend):
         self._token = None
         self._girder_client = None
 
-    def _get_girder_client(self):
-        import girder_client
-        if self._girder_client is None:
-            self._girder_client = girder_client.GirderClient(apiUrl=self._api_url)
-            self._girder_client.authenticate(apiKey=self._api_key)
-        return self._girder_client
-
     def _authenticate_if_needed(self):
         if self._api_key is not None and self._token is None:
             token_raw = curl(
-                "-L -s --data key={api_key} {api_url}/api_key/token".format(api_key=self._api_key, self._api_url))
+                "-L -s --data key={api_key} {api_url}/api_key/token".format(api_key=self._api_key, api_url=self._api_url))
             self._token = json.loads(token_raw)["authToken"]["token"]
 
     def _download_url(sha):
@@ -367,8 +362,41 @@ class GirderBackend(Backend):
         args = self._download_args(sha)
         curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
+    def _get_girder_client(self):
+        import girder_client
+        if self._girder_client is None:
+            self._girder_client = girder_client.GirderClient(apiUrl=self._api_url)
+            self._girder_client.authenticate(apiKey=self._api_key)
+        return self._girder_client
 
-# For direct --url file downloads.
+    def upload_file(self, filepath, sha=None):
+        if sha is None:
+            sha = compute_sha(filepath)
+
+        item_name = "%s %s" % (os.path.basename(filepath), datetime.utcnow().isoformat())
+
+        versioned_filepath = os.path.relpath(filepath, self.project.root)
+        if versioned_filepath.startswith('..'):
+            raise RuntimeError("File to upload, '{}', must be under '{}'".format(filepath, self.project.root))
+        
+        print("api_url ............: %s" % self._api_url)
+        print("folder_id ..........: %s" % self._folder_id)
+        print("filepath ...........: %s" % filepath)
+        print("sha512 .............: %s" % sha)
+        print("item_name ..........: %s" % item_name)
+        print("project_root .......: %s" % self.project.root)
+        print("versioned_filepath .: %s" % versioned_filepath)
+        # TODO(eric.cousineau): Include `conf.project_name` in the versioning.
+        ref = json.dumps({'versionedFilePath': versioned_filepath})
+        gc = self._get_girder_client()
+        size = os.stat(filepath).st_size
+        with open(filepath, 'rb') as fd:
+            print("Uploading: {}".format(filepath))
+            gc.uploadFile(self._folder_id, fd, name=item_name, size=size, parentType='folder', reference=ref)
+
+
+# For direct file downloads.
+# Example: download --remote="{backend: direct, url: '...'}"
 class DirectBackend(Backend):
     def __init__(self, project, config_node):
         Backend.__init__(self, project)
@@ -389,6 +417,7 @@ def guess_start_dir(filepath):
     else:
         start_dir = os.path.dirname(filepath)
     return start_dir
+
 
 def find_project_root(start_dir, sentinel):
     root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))

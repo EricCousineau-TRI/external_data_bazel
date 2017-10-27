@@ -60,7 +60,7 @@ def external_data(file, mode='normal', url=None):
             cmd += "--symlink_from_cache "
         # Argument: Specific URL.
         if url:
-            cmd += "--url={} ".format(url)
+            cmd += "--remote='{{ backend: direct, url: {} }}' ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
