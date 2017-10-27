@@ -4,5 +4,5 @@ scope:
 remote:
     test_overlay:
         backend: mock
-        overlay: master
+        overlay: <parent>
         dir: mock_backend_overlay

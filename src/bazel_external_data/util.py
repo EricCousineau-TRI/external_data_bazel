@@ -86,30 +86,26 @@ def _merge_unique(base, new):
 # Compatibility shim.
 util = sys.modules[__name__]
 
-class Project(object):
-    def __init__(self, setup, root_config):
-        self.setup = setup
-        self.core = Core(root_config['core'])
-        self.root_config = root_config
+# TODO: Consider discarding this class.
+class Scope(object):
+    def __init__(self, project, parent, config_node):
+        self.project = project
+        self.parent = parent
+        remote_name = config_node['remote_selected']
+        self._remote_provider = RemoteProvider()
+        self.remote = self.project.get_remote(remote_name)
 
-        config_node = root_config['project']
-        self.name = config_node['name']
-        self.root = config_node['root']
 
-        self._remotes_config = root_config['remote']
+class RemoteProvider(object):
+    def __init__(self, project, scope, remote_config):
+        self.project = project
+        self.scope = scope
+
+        self._remotes_config = remote_config
         self._remotes = {}
         self._remote_is_loading = []
         self._backends = {}
         self._scopes = {}
-
-        # Register backends.
-        self.register_backends(self.setup.get_backends())
-        # Register root scope.
-        self.root_scope = Scope(self, None, root_config['scope'])
-
-    def debug_dump_config(self, f = None):
-        # TODO: What about a given Scope node?
-        return yaml.dump(self.root_config, f, default_flow_style=False)
 
     def get_remote(self, name):
         # On-demand remote retrieval, with robustness against cycles.
@@ -128,6 +124,27 @@ class Project(object):
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
             return remote
+
+
+class Project(object):
+    def __init__(self, setup, root_config):
+        self.setup = setup
+        self.core = Core(root_config['core'])
+        self.root_config = root_config
+
+        config_node = root_config['project']
+        self.name = config_node['name']
+        self.root = config_node['root']
+        self._remote_provider = RemoteProvider(
+
+        # Register backends.
+        self.register_backends(self.setup.get_backends())
+        # Register root scope.
+        self.root_scope = Scope(self, None, root_config['scope'])
+
+    def debug_dump_config(self, f = None):
+        # TODO: What about a given Scope node?
+        return yaml.dump(self.root_config, f, default_flow_style=False)
 
     def register_backends(self, backends):
         _merge_unique(self._backends, backends)
@@ -266,15 +283,6 @@ class Remote(object):
         # with open(sha_file, 'w') as fd:
         #     print("Updating sha file: {}".format(sha_file))
         #     fd.write(sha)
-
-# TODO: Consider discarding this class.
-class Scope(object):
-    def __init__(self, project, parent, config_node):
-        self.project = project
-        self.parent = parent
-        remote_name = config_node['remote']
-        self.remote = self.project.get_remote(remote_name)
-
 
 
 class Backend(object):
