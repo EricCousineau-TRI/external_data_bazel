@@ -1,8 +1,5 @@
-py_library(
-    name = "config",
-    srcs = ["bazel_external_data_config.py"],
-    imports = ["."],
-)
-
-py_binary(
+filegroup(
+    name = 'sentinel',
+    srcs = [':.custom-sentinel'],
+    visibility=["//visibility:public"],
 )

@@ -4,7 +4,7 @@ load("//tools:macros.bzl",
     "get_original_files"
 )
 
-CUSTOM_TOOL = "//test/tools:external_data_download"
+CUSTOM_TOOL = "//test/tools:download"
 
 def external_data(*args, **kwargs):
     external_data_impl(

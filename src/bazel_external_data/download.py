@@ -12,12 +12,8 @@ assert __name__ == '__main__'
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHA-512s, if the files are really large.
 
-# TODO(eric.cousineau): Allow this to handle multiple files to download. Add a `--batch` argument, that will infer
-# the output paths.
-
-# TODO(eric.cousineau): Ensure that we do not need immediate authentication in configuration, e.g. when in road warrior mode.
-
 parser = argparse.ArgumentParser()
+# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
 parser.add_argument('-o', '--output', dest='output_file', type=str,
                     help='Output destination. If specified, only one input file may be provided.')
 parser.add_argument('-k', '--keep_going', action='store_true',
@@ -30,22 +26,19 @@ parser.add_argument('--symlink_from_cache', action='store_true',
                     help='Use a symlink from the cache rather than copying the file.')
 parser.add_argument('--allow_relpath', action='store_true',
                     help='Permit relative paths. Having this on by default makes using Bazel simpler.')
+parser.add_argument('--check_file', action='store_true',
+                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 parser.add_argument('--debug_config', action='store_true',
                     help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('--debug_remote', action='store_true',
                     help='Dump configuration for the chain of scopes and remotes for the files.')
-parser.add_argument('--debug_has_file', action='store_true',
-                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
 args = parser.parse_args()
 
-# Hack to permit running from command-line easily.
-# TODO(eric.cousineau): Require that this is only run from Bazel.
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..')))
 from bazel_external_data import util
 
 SHA_SUFFIX = util.SHA_SUFFIX
@@ -81,7 +74,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
     if args.debug_remote:
         project.debug_dump_remote(remote, sys.stdout)
 
-    if args.debug_has_file:
+    if args.check_file:
         if not remote.has_file(sha):
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
 
