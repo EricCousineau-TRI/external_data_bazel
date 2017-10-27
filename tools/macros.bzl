@@ -8,7 +8,7 @@ SHA_SUFFIX = ".sha512"
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data(file, mode='normal', url=None):
+def external_data_impl(file, mode='normal', url=None, tool=None):
     """
     Macro for defining a large file.
 
@@ -42,8 +42,8 @@ def external_data(file, mode='normal', url=None):
     elif mode in ['normal', 'no_cache']:
         name = "download_{}".format(file)
         sha_file = file + SHA_SUFFIX
-        tool_name = "download"
-        tool = "//tools/external_data:{}".format(tool_name)
+        if tool is None:
+            fail("Must define custom tool for a custom repository")
 
         # Binary:
         cmd = "$(location {}) ".format(tool)
@@ -84,8 +84,11 @@ def external_data(file, mode='normal', url=None):
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group(name, files, files_devel = [], mode='normal'):
+def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None):
     """ @see external_data """
+    def external_data(*args, **kwargs):
+        external_data_impl(*args, tool=tool, **kwargs)
+
     if ENABLE_WARN and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
@@ -114,7 +117,7 @@ def external_data_group(name, files, files_devel = [], mode='normal'):
     )
 
 
-def strip_sha(sha_files):
+def get_original_files(sha_files):
     files = []
     for sha_file in sha_files:
         if not sha_file.endswith(SHA_SUFFIX):
@@ -129,6 +132,6 @@ def strip_sha(sha_files):
 #     @see external_data """
 #     external_data_group(
 #         name = name,
-#         files = strip_sha(sha_files),
+#         files = get_original_files(sha_files),
 #         **kwargs
 #     )
