@@ -7,10 +7,14 @@ class CustomSetup(util.ProjectSetup):
     def get_config(self, filepath):
         sentinel = {'file': '.custom-sentinel'}
         config = util.ProjectSetup.get_config(self, filepath, sentinel=sentinel)
+        tmp_cache = os.path.join('/tmp/bazel_external_data/test_cache')
+        config['core']['cache_dir'] = tmp_cache
+        return config
 
     def get_backends(self):
-        backends = util.ProjectSetup.get_backends()
+        backends = util.ProjectSetup.get_backends(self)
         backends['mock'] = MockBackend
+        return backends
 
 
 class MockBackend(util.Backend):
@@ -20,18 +24,20 @@ class MockBackend(util.Backend):
 
         # Crawl through files and compute SHAs.
         self._map = {}
-        for file in os.path.listfiles(self.dir):
-            sha = util.compute_sha(file)
-            self._map[sha] = file
+        for file in os.listdir(self._dir):
+            filepath = os.path.join(self._dir, file)
+            if os.path.isfile(filepath):
+                sha = util.compute_sha(filepath)
+                self._map[sha] = filepath
 
     def has_file(self, sha):
         return sha in self._map
 
     def download_file(self, sha, output_file):
-        file = self._map.get(sha)
-        if file is None:
+        filepath = self._map.get(sha)
+        if filepath is None:
             raise util.DownloadError("Unknown sha: {}".format(sha))
-        util.subshell(['cp', file, output_file])
+        util.subshell(['cp', filepath, output_file])
 
     def upload_file(self, filepath):
         sha = util.compute_sha(filepath)
