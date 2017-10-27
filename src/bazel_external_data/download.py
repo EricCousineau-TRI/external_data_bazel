@@ -36,6 +36,8 @@ parser.add_argument('--debug_config', action='store_true',
                     help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('--debug_remote', action='store_true',
                     help='Dump configuration for the chain of scopes and remotes for the files.')
+parser.add_argument('--debug_has_file', action='store_true',
+                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
@@ -78,6 +80,10 @@ def do_download(project, sha_file, output_file, remote_in=None):
 
     if args.debug_remote:
         project.debug_dump_remote(remote, sys.stdout)
+
+    if args.debug_has_file:
+        if not remote.has_file(sha):
+            raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
 
     remote.download_file(sha, output_file,
                          use_cache=use_cache,

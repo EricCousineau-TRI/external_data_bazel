@@ -246,14 +246,11 @@ class Remote(object):
         # We should have not overlays that are descendants of this scope; only ancestors.
         return self.has_overlay() and self._overlay.scope != self.scope
 
-    # Will this be used?
-    def _has_file(self, sha):
+    def has_file(self, sha, check_overlay=True):
         if self._backend.has_file(sha):
             return True
-        elif self.has_overlay() and self._overlay.has_file(sha):
-            return True
-        else:
-            return False
+        elif check_overlay and self.has_overlay():
+            return self._overlay.has_file(sha)
 
     def _download_file_direct(self, sha, output_path):
         # TODO: Make this more efficient...
