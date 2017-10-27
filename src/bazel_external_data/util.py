@@ -56,9 +56,9 @@ class ProjectSetup(object):
     def get_backends(self):
         return get_backends()
 
-    def get_scope_config_files(self, project, filepath):
+    def get_scope_config_files(self, project_root, filepath):
         start_dir = guess_start_dir(filepath)
-        return find_scope_config_files(project.root, start_dir)
+        return find_scope_config_files(project_root, start_dir)
 
 
 def load_project(filepath):
@@ -138,7 +138,7 @@ class Project(object):
 
     def load_remote(self, filepath):
         """ Load remote for a given file to either fetch or push a file """
-        config_files = self.setup.get_scope_config_files(filepath)
+        config_files = self.setup.get_scope_config_files(self.root, filepath)
         scope = self.root_scope
         for config_file in config_files:
             parent = scope
@@ -184,7 +184,7 @@ class Remote(object):
         # TODO: Make this more efficient...
         try:
             self._backend.download_file(sha, output_path)
-        except e as DownloadError:
+        except DownloadError as e:
             if self._overlay:
                 self._overlay.download_file(sha, output_path)
             else:
@@ -338,10 +338,10 @@ class GirderBackend(Backend):
                 "-L -s --data key={api_key} {api_url}/api_key/token".format(api_key=self._api_key, api_url=self._api_url))
             self._token = json.loads(token_raw)["authToken"]["token"]
 
-    def _download_url(sha):
+    def _download_url(self, sha):
         return "{api_url}/file/hashsum/sha512/{sha}/download".format(sha=sha, api_url=self._api_url)
 
-    def _download_args(sha):
+    def _download_args(self, sha):
         url = self._download_url(sha)
         self._authenticate_if_needed()
         if self._token:
@@ -457,13 +457,29 @@ def _is_child_path(child_path, parent_path):
     rel_path = os.path.relpath(child_path, parent_path)
     return not rel_path.startswith('..' + os.path.sep)
 
+def find_scope_config_files(project_root, start_dir, config_file = CONFIG_FILE):
+    assert _is_child_path(start_dir, project_root)
+    config_files = []
+    cur_dir = start_dir
+    while cur_dir != project_root:
+        test_path = os.path.join(cur_dir, config_file)
+        if os.path.isfile(test_path):
+            config_files.prepend(test_path)
+        cur_dir = os.path.dirname(cur_dir)
+    return config_files
 
-def find_project_config_files(project_root, start_dir, config_file = CONFIG_FILE,
-                              prefix_set = [USER_CONFIG]):
+
+def find_project_config_files(project_root, start_dir,
+                              config_file = CONFIG_FILE,
+                              optional_extras = [USER_CONFIG]):
+    config_paths = []
+    for extra in optional_extras:
+        if os.path.isfile(extra):
+            config_paths.append(extra)
     # At project root, we *must* have a config file.
     project_config_path = os.path.join(project_root, config_file)
     assert os.path.isfile(project_config_path), "Must specify project config"
-    config_paths = prefix_set + [project_config_path]
+    config_paths.append(project_config_path)
     return config_paths
 
 
