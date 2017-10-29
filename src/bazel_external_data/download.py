@@ -6,6 +6,7 @@
 from __future__ import absolute_import, print_function
 import sys
 import os
+import yaml
 import argparse
 
 from bazel_external_data import base, util
@@ -75,7 +76,11 @@ def do_download(project, sha_file, output_file, remote_in=None):
         remote = remote_in
 
     if args.debug_remote:
-        project.debug_dump_remote(remote, sys.stdout)
+        dump = [{
+            "file": sha_file,
+            "scopes": project.debug_dump_remote(remote),
+        }]
+        yaml.dump(dump, sys.stdout, default_flow_style=False)
 
     if args.check_file:
         if not remote.has_file(sha):
@@ -87,7 +92,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
 
 project = base.load_project(os.getcwd())
 if args.debug_config:
-    project.debug_dump_config(sys.stdout)
+    yaml.dump(project.debug_dump_config(), sys.stdout, default_flow_style=False)
 
 remote_in = None
 if args.remote:

@@ -1,5 +1,4 @@
 import os
-import yaml
 
 from bazel_external_data import util, config_helpers
 
@@ -199,22 +198,22 @@ class Project(object):
         self.root_scope = Scope(self, root_config['scope'], None)
         self._scopes['<project config>'] = self.root_scope
 
-    def debug_dump_config(self, f = None):
-        # TODO: What about a given Scope node?
-        return yaml.dump(self.root_config, f, default_flow_style=False)
+    def debug_dump_config(self):
+        # Should return copy for const-ness.
+        return self.root_config
 
-    def debug_dump_remote(self, remote, f = None, dump_all = False):
+    def debug_dump_remote(self, remote, dump_all = False):
         scope = remote.scope
         # For each scope, print its respective filepath.
         scope_dump = []
         while scope is not None:
             scope_file = util.find_key(self._scopes, scope)
-            scope_dump.append({'filepath': scope_file, 'value': scope.config_node})
+            scope_dump.append({'config_file': scope_file, 'config': scope.config_node})
             if dump_all or scope.remote.has_parent_overlay():
                 scope = scope.parent
             else:
                 break
-        return yaml.dump({'scopes': scope_dump}, f, default_flow_style=False)
+        return scope_dump
 
     def get_relpath(self, filepath):
         # Get filepath relative to project root, using alternatives.
