@@ -1,5 +1,6 @@
 ENABLE_WARN = True
 VERBOSE = False
+DEBUG = True
 
 SHA_SUFFIX = ".sha512"
 
@@ -68,6 +69,8 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
+        if DEBUG:
+            cmd += "--debug_config --debug_remote "
 
         if VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
