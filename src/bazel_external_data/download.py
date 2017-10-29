@@ -82,6 +82,8 @@ def do_download(project, sha_file, output_file, remote_in=None):
                          use_cache=use_cache,
                          symlink_from_cache=args.symlink_from_cache)
 
+util.eprint("Pwd: {}".format(os.getcwd()))
+
 project = util.load_project(os.getcwd())
 if args.debug_config:
     project.debug_dump_config(sys.stdout)

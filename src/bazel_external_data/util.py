@@ -48,9 +48,9 @@ class ProjectSetup(object):
     def __init__(self):
         pass
 
-    def get_config(self, filepath, sentinel={'file': 'WORKSPACE'}):
+    def get_config(self, guess_filepath, sentinel={'file': 'WORKSPACE'}):
         # NOTE: This may not work if Bazel places the file in a symlink'd directory...
-        start_dir = guess_start_dir(filepath)
+        start_dir = guess_start_dir(guess_filepath)
         # ^ Alternative: Guess project_root and do symlink interface,
         # then try to guess start_dir.
         project_root = find_project_root(start_dir, sentinel)

@@ -3,10 +3,25 @@ import os
 
 from bazel_external_data import util
 
+def guess_start_dir_bazel(guess_filepath, rel_path):
+    # rel_path - Path of project root relative to Bazel workspace.
+    if os.path.isdir(guess_filepath):
+        guess_start_dir = guess_filepath
+    else:
+        guess_start_dir = os.path.dirname(guess_filepath)
+    test_dir = os.path.join(guess_start_dir, rel_path)
+    if os.path.isdir(test_dir):
+        return test_dir
+    else:
+        return guess_start_dir
+
 class CustomSetup(util.ProjectSetup):
-    def get_config(self, filepath):
+    def get_config(self, guess_filepath):
+        # Augment starting directory to `tools/`, since Bazel will start at the root otherwise.
+        # Only necessary if the sentinel is not at the Bazel root.
+        guess_start_dir = guess_start_dir_bazel(guess_filepath, 'test')
         sentinel = {'file': '.custom-sentinel'}
-        config = util.ProjectSetup.get_config(self, filepath, sentinel=sentinel)
+        config = util.ProjectSetup.get_config(self, guess_start_dir, sentinel=sentinel)
         tmp_cache = os.path.join('/tmp/bazel_external_data/test_cache')
         config['core']['cache_dir'] = tmp_cache
         return config
