@@ -44,11 +44,14 @@ from bazel_external_data import util
 SHA_SUFFIX = util.SHA_SUFFIX
 
 def do_download(project, sha_file, output_file, remote_in=None):
+    # Ensure that we have absolute file paths.
     if not args.allow_relpath:
-        # Ensure that we have absolute file paths.
         files = [sha_file, output_file]
         if not all(map(os.path.isabs, files)):
             raise RuntimeError("Must specify absolute paths:\n  {}".format("\n".join(files)))
+    else:
+        sha_file = os.path.abspath(sha_file)
+        output_file = os.path.abspath(output_file)
 
     # Ensure that we do not overwrite existing files.
     if os.path.isfile(output_file):

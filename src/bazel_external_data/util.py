@@ -19,6 +19,11 @@ import yaml
 cur_dir = os.path.dirname(__file__)
 SHA_SUFFIX = '.sha512'
 
+def is_child_path(child_path, parent_path):
+    assert os.path.isabs(child_path) and os.path.isabs(parent_path)
+    assert not parent_path.endswith(os.path.sep)
+    return child_path.startswith(parent_path + os.path.sep)
+
 # TODO(eric.cousineau): Make a hashing setup, that defines a key for the algorithm, a suffix,
 # and a computation / check method.
 
@@ -42,28 +47,29 @@ def get_backends():
         "direct": DirectBackend,
     }
 
-# TODO: Cache fake Bazel root, and use this to get relative workspace path.
-
 class ProjectSetup(object):
     def __init__(self):
+        self._symlink_root = None
         pass
 
     def get_config(self, guess_filepath, sentinel={'file': 'WORKSPACE'}):
-        # NOTE: This may not work if Bazel places the file in a symlink'd directory...
         start_dir = guess_start_dir(guess_filepath)
-        # ^ Alternative: Guess project_root and do symlink interface,
-        # then try to guess start_dir.
-        project_root = find_project_root(start_dir, sentinel)
+        project_root, root_alternatives = find_project_root(start_dir, sentinel)
         project_config_files = find_project_config_files(project_root, start_dir)
         project_config = parse_and_merge_config_files(project_root, project_config_files)
+        if root_alternatives is not None:
+            # Cache symlink root, and use this to get relative workspace path if the file is specified in
+            # the symlink'd directory (e.g. Bazel runfiles).
+            project_config['project']['root_alternatives'] = root_alternatives
         return project_config
 
     def get_backends(self):
         return get_backends()
 
-    def get_scope_config_files(self, project_root, filepath):
+    def get_scope_config_files(self, project, filepath_in):
+        filepath = project.get_canonical_path(filepath_in)
         start_dir = guess_start_dir(filepath)
-        return find_scope_config_files(project_root, start_dir)
+        return find_scope_config_files(project.root, start_dir)
 
 
 def load_project(filepath):
@@ -150,6 +156,7 @@ class Project(object):
         config_node = root_config['project']
         self.name = config_node['name']
         self.root = config_node['root']
+        self._root_alternatives = config_node.get('root_alternatives', [])
 
         # Register backends.
         self._backends = {}
@@ -176,6 +183,22 @@ class Project(object):
                 break
         return yaml.dump({'scopes': scope_dump}, f, default_flow_style=False)
 
+    def get_relpath(self, filepath):
+        # Get filepath relative to project root, using alternatives.
+        assert os.path.isabs(filepath)
+        root_paths = [self.root] + self._root_alternatives
+        # WARNING: This will not handle a nest root!
+        # (e.g. if an alternative is a child or parent of another path)
+        for root in root_paths:
+            if is_child_path(filepath, root):
+                return os.path.relpath(filepath, root)
+        raise RuntimeError("Path is not a child of given project")
+
+    def get_canonical_path(self, filepath):
+        """ Get filepath as an absolute path, ensuring that it is with respect to the canonical project root """
+        relpath = self.get_relpath(filepath)
+        return os.path.join(self.root, relpath)
+
     def register_backends(self, backends):
         _merge_unique(self._backends, backends)
 
@@ -184,7 +207,7 @@ class Project(object):
         return backend_cls(self, config_node)
 
     def load_scope(self, filepath):
-        config_files = self.setup.get_scope_config_files(self.root, filepath)
+        config_files = self.setup.get_scope_config_files(self, filepath)
         scope = self.root_scope
         for config_file in config_files:
             parent = scope
@@ -486,7 +509,7 @@ if not guess_at_end:
 
     def find_project_root(start_dir, sentinel):
         root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
-        return os.path.dirname(root_file)
+        return (os.path.dirname(root_file), [])
 
 else:
 
@@ -508,22 +531,23 @@ else:
         # which is the entire point of `.project-root`.
         #  (2) `.git` - What we really want, just need to make sure Git sees this.
         root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+        root_alternatives = []
         if os.path.islink(root_file):
+            root_alternatives.append(os.path.dirname(root_file))
             root_file = os.readlink(root_file)
             assert os.path.isabs(root_file)
             if os.path.islink(root_file):
                 raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
-        return os.path.dirname(root_file)
+        root = os.path.dirname(root_file)
+        return (root, root_alternatives)
 
 CONFIG_FILE = ".bazel_external_data.yml"
 USER_CONFIG = os.path.expanduser("~/.config/bazel_external_data/config.yml")
 
-def _is_child_path(child_path, parent_path):
-    rel_path = os.path.relpath(child_path, parent_path)
-    return not rel_path.startswith('..' + os.path.sep)
-
 def find_scope_config_files(project_root, start_dir, config_file = CONFIG_FILE):
-    assert _is_child_path(start_dir, project_root)
+    assert os.path.isabs(start_dir)
+    assert os.path.isabs(project_root)
+    assert is_child_path(start_dir, project_root)
     config_files = []
     cur_dir = start_dir
     while cur_dir != project_root:
