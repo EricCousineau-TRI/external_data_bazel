@@ -8,6 +8,8 @@ import sys
 import os
 import argparse
 
+from bazel_external_data import base, util
+
 assert __name__ == '__main__'
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHA-512s, if the files are really large.
@@ -39,9 +41,7 @@ parser.add_argument('sha_files', type=str, nargs='+',
 
 args = parser.parse_args()
 
-from bazel_external_data import util
-
-SHA_SUFFIX = util.SHA_SUFFIX
+SHA_SUFFIX = base.SHA_SUFFIX
 
 def do_download(project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
@@ -85,7 +85,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
                          use_cache=use_cache,
                          symlink_from_cache=args.symlink_from_cache)
 
-project = util.load_project(os.getcwd())
+project = base.load_project(os.getcwd())
 if args.debug_config:
     project.debug_dump_config(sys.stdout)
 

@@ -1,29 +1,35 @@
 #!/usr/bin/env python
 import os
 
-from bazel_external_data import util
+from bazel_external_data.base import ProjectSetup, Backend
+from bazel_external_data import config_helpers, util
 
-class CustomSetup(util.ProjectSetup):
+class CustomSetup(ProjectSetup):
     def get_config(self, guess_filepath):
         # Augment starting directory to `tools/`, since Bazel will start at the root otherwise.
         # Only necessary if the sentinel is not at the Bazel root.
         relpath = 'test'
-        guess_start_dir = util.guess_start_dir_bazel(guess_filepath, relpath)
+        guess_start_dir = config_helpers.guess_start_dir_bazel(guess_filepath, relpath)
         sentinel = {'file': '.custom-sentinel'}
-        config = util.ProjectSetup.get_config(self, guess_start_dir, sentinel=sentinel, relpath=relpath)
+        config = ProjectSetup.get_config(self, guess_start_dir, sentinel=sentinel, relpath=relpath)
+        # Override cache directory for testing.
         tmp_cache = os.path.join('/tmp/bazel_external_data/test_cache')
         config['core']['cache_dir'] = tmp_cache
         return config
 
     def get_backends(self):
-        backends = util.ProjectSetup.get_backends(self)
+        backends = ProjectSetup.get_backends(self)
         backends['mock'] = MockBackend
         return backends
 
 
-class MockBackend(util.Backend):
+def get_setup():
+    return CustomSetup()
+
+
+class MockBackend(Backend):
     def __init__(self, project, config_node):
-        util.Backend.__init__(self, project, config_node)
+        Backend.__init__(self, project, config_node)
         self._dir = os.path.join(self.project.root, config_node['dir'])
 
         # Crawl through files and compute SHAs.
@@ -48,7 +54,3 @@ class MockBackend(util.Backend):
         assert sha not in self._map
         # Just store the filepath transitively.
         self._map[sha] = filepath
-
-
-def get_setup():
-    return CustomSetup()

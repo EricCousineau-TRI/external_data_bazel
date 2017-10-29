@@ -13,9 +13,9 @@ import argparse
 
 from datetime import datetime
 
-from bazel_external_data import util
+from bazel_external_data import base
 
-SHA_SUFFIX = util.SHA_SUFFIX
+SHA_SUFFIX = base.SHA_SUFFIX
 
 def upload(project, filepath):
     if not os.path.isabs(filepath):
@@ -42,7 +42,7 @@ def main():
     parser.add_argument('filepaths', type=str, nargs='+')
     args = parser.parse_args()
 
-    project = util.load_project(os.getcwd())
+    project = base.load_project(os.getcwd())
     for filepath in args.filepaths:
         upload(project, filepath)
 
