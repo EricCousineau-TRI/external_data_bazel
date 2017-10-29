@@ -7,7 +7,7 @@ project:
 # Change this to "devel" if you are uploading files to this remote.
 # If you define a custom `.bazel_external_data.yml` in a subproject, ensure that
 # override the "remote"! Otherwise, the remote will leak through.
-scope:
+package:
     remote: master
 
 remote:

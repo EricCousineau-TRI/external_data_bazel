@@ -2,7 +2,7 @@
 project:
     name: test
 
-scope:
+package:
     remote: master
 
     remotes:

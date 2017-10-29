@@ -69,7 +69,7 @@ def find_project_root(start_dir, sentinel, relpath):
     root = os.path.dirname(root_file)
     return (root, root_alternatives)
 
-def find_scope_config_files(project_root, start_dir, config_file = CONFIG_FILE):
+def find_package_config_files(project_root, start_dir, config_file = CONFIG_FILE):
     assert os.path.isabs(start_dir)
     assert os.path.isabs(project_root)
     assert util.is_child_path(start_dir, project_root)

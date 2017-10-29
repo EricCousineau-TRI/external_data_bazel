@@ -14,5 +14,5 @@ sync_sha() {
 }
 
 sync_sha mock/backend_root .
-sync_sha mock/backend_child ./scope
-sync_sha mock/backend_child ./scope_overlay
+sync_sha mock/backend_child ./package
+sync_sha mock/backend_child ./package_overlay

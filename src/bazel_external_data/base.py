@@ -5,7 +5,7 @@ from bazel_external_data import util, config_helpers
 SHA_SUFFIX = '.sha512'
 
 # TODO: Rename `Project` -> `Workspace`
-# TODO: Rename `Scope` -> `Package`
+# TODO: Rename `Package` -> `Package`
 
 class Backend(object):
     def __init__(self, project, config_node):
@@ -22,12 +22,12 @@ class Backend(object):
 
 
 class Remote(object):
-    def __init__(self, project, name, config_node, scope = None):
+    def __init__(self, project, name, config_node, package = None):
         self.project = project
-        if scope:
-            self.scope = scope
+        if package:
+            self.package = package
         else:
-            self.scope = project.root_scope
+            self.package = project.root_package
         self.name = name
         backend_type = config_node['backend']
         self._backend = self.project.load_backend(backend_type, config_node)
@@ -35,14 +35,14 @@ class Remote(object):
         overlay_name = config_node.get('overlay')
         self._overlay = None
         if overlay_name is not None:
-            self._overlay = self.scope.get_remote(overlay_name)
+            self._overlay = self.package.get_remote(overlay_name)
 
     def has_overlay(self):
         return self._overlay is not None
 
     def has_parent_overlay(self):
-        # We should have not overlays that are descendants of this scope; only ancestors.
-        return self.has_overlay() and self._overlay.scope != self.scope
+        # We should have not overlays that are descendants of this package; only ancestors.
+        return self.has_overlay() and self._overlay.package != self.package
 
     def has_file(self, sha, check_overlay=True):
         if self._backend.has_file(sha):
@@ -131,7 +131,7 @@ class Remote(object):
         return sha
 
 
-class Scope(object):
+class Package(object):
     def __init__(self, project, config_node, parent):
         self._project = project
         self.parent = parent
@@ -149,10 +149,10 @@ class Scope(object):
 
     def get_remote(self, name):
         if name == '..':
-            assert self.parent, "Attempting to access parent remote at root scope?"
+            assert self.parent, "Attempting to access parent remote at root package?"
             return self.parent.remote
         if not self.has_remote(name):
-            # Use parent if this scope does not contain the desired remote.
+            # Use parent if this package does not contain the desired remote.
             if self.parent:
                 self.parent.get_remote(name)
             else:
@@ -167,7 +167,7 @@ class Scope(object):
             self._remote_is_loading.append(name)
             remote_node = self._remotes_config[name]
             # Load remote.
-            remote = Remote(self._project, name, remote_node, scope=self)
+            remote = Remote(self._project, name, remote_node, package=self)
             # Update.
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
@@ -193,27 +193,27 @@ class Project(object):
         # Register backends.
         self._backends = {}
         self.register_backends(self.setup.get_backends())
-        # Create root scope and parse base remotes.
-        self._scopes = {}
-        self.root_scope = Scope(self, root_config['scope'], None)
-        self._scopes['<project config>'] = self.root_scope
+        # Create root package and parse base remotes.
+        self._packages = {}
+        self.root_package = Package(self, root_config['package'], None)
+        self._packages['<project config>'] = self.root_package
 
     def debug_dump_config(self):
         # Should return copy for const-ness.
         return self.root_config
 
     def debug_dump_remote(self, remote, dump_all = False):
-        scope = remote.scope
-        # For each scope, print its respective filepath.
-        scope_dump = []
-        while scope is not None:
-            scope_file = util.find_key(self._scopes, scope)
-            scope_dump.append({'config_file': scope_file, 'config': scope.config_node})
-            if dump_all or scope.remote.has_parent_overlay():
-                scope = scope.parent
+        package = remote.package
+        # For each package, print its respective filepath.
+        package_dump = []
+        while package is not None:
+            package_file = util.find_key(self._packages, package)
+            package_dump.append({'config_file': package_file, 'config': package.config_node})
+            if dump_all or package.remote.has_parent_overlay():
+                package = package.parent
             else:
                 break
-        return scope_dump
+        return package_dump
 
     def get_relpath(self, filepath):
         # Get filepath relative to project root, using alternatives.
@@ -238,41 +238,41 @@ class Project(object):
         backend_cls = self._backends[backend_type]
         return backend_cls(self, config_node)
 
-    def load_scope(self, filepath):
-        config_files = self.setup.get_scope_config_files(self, filepath)
-        scope = self.root_scope
+    def load_package(self, filepath):
+        config_files = self.setup.get_package_config_files(self, filepath)
+        package = self.root_package
         for config_file in config_files:
-            parent = scope
-            scope = self._scopes.get(config_file)
-            if scope is None:
-                # Parse the scope config file.
+            parent = package
+            package = self._packages.get(config_file)
+            if package is None:
+                # Parse the package config file.
                 config = config_helpers.parse_config_file(config_file)
-                # Load scope.
-                scope = Scope(self, config['scope'], parent)
-                self._scopes[config_file] = scope
-        return scope
+                # Load package.
+                package = Package(self, config['package'], parent)
+                self._packages[config_file] = package
+        return package
 
     def load_remote(self, filepath):
         """ Load remote for a given file to either fetch or push a file """
-        return self.load_scope(filepath).remote
+        return self.load_package(filepath).remote
 
     def load_remote_command_line(self, remote_config, start_dir=None):
         file_name = '<command_line>'
         remote_name = 'command_line'
-        assert file_name not in self._scopes
+        assert file_name not in self._packages
         if start_dir is None:
-            parent = self.root_scope
+            parent = self.root_package
         else:
-            parent = self.load_scope(start_dir)
-        scope_config = {
+            parent = self.load_package(start_dir)
+        package_config = {
             'remote': remote_name,
             'remotes': {
                 remote_name: remote_config,
             },
         }
-        scope = Scope(self, scope_config, parent)
-        self._scopes[file_name] = scope
-        return scope.remote
+        package = Package(self, package_config, parent)
+        self._packages[file_name] = package
+        return package.remote
 
 class ProjectSetup(object):
     """ Extend this to change how configuration files are found for a project. """
@@ -295,10 +295,10 @@ class ProjectSetup(object):
         from bazel_external_data.backends import get_default_backends
         return get_default_backends()
 
-    def get_scope_config_files(self, project, filepath_in):
+    def get_package_config_files(self, project, filepath_in):
         filepath = project.get_canonical_path(filepath_in)
         start_dir = config_helpers.guess_start_dir(filepath)
-        return config_helpers.find_scope_config_files(project.root, start_dir)
+        return config_helpers.find_package_config_files(project.root, start_dir)
 
 
 def load_project(filepath):

@@ -1,4 +1,4 @@
-scope:
+package:
     remote: test_child
 
     remotes:
