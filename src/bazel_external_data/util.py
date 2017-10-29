@@ -52,9 +52,9 @@ class ProjectSetup(object):
         self._symlink_root = None
         pass
 
-    def get_config(self, guess_filepath, sentinel={'file': 'WORKSPACE'}):
+    def get_config(self, guess_filepath, sentinel={'file': 'WORKSPACE'}, relpath=''):
         start_dir = guess_start_dir(guess_filepath)
-        project_root, root_alternatives = find_project_root(start_dir, sentinel)
+        project_root, root_alternatives = find_project_root(start_dir, sentinel, relpath)
         project_config_files = find_project_config_files(project_root, start_dir)
         project_config = parse_and_merge_config_files(project_root, project_config_files)
         if root_alternatives is not None:
@@ -494,6 +494,21 @@ class DirectBackend(Backend):
 
 guess_at_end = True
 
+def guess_start_dir_bazel(guess_filepath, rel_path):
+    # rel_path - Path of project root relative to Bazel workspace.
+    if os.path.isdir(guess_filepath):
+        guess_start_dir = guess_filepath
+    else:
+        guess_start_dir = os.path.dirname(guess_filepath)
+    test_dir = os.path.join(guess_start_dir, rel_path)
+    if os.path.isdir(test_dir):
+        return test_dir
+    else:
+        return guess_start_dir
+
+def is_bazel_cache_dir(filepath):
+    return '/.cache/bazel/' in filepath
+
 if not guess_at_end:
 
     def guess_start_dir(filepath):
@@ -519,7 +534,7 @@ else:
         else:
             return os.path.dirname(filepath)
 
-    def find_project_root(start_dir, sentinel):
+    def find_project_root(start_dir, sentinel, relpath):
         # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
         # However, because Bazel does symlink magic that is not easily parseable,
         # we should not rely on something like `symlink -f ${file}`, because
@@ -533,11 +548,27 @@ else:
         root_file = find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
         root_alternatives = []
         if os.path.islink(root_file):
-            root_alternatives.append(os.path.dirname(root_file))
+            old_root_dir = os.path.dirname(root_file)
+            root_alternatives.append(old_root_dir)
             root_file = os.readlink(root_file)
             assert os.path.isabs(root_file)
             if os.path.islink(root_file):
                 raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
+        elif relpath and is_bazel_cache_dir(root_file):
+            # Check up according to the relative path.
+            old_root_dir = os.path.dirname(root_file)
+            pieces = relpath.split('/')
+            up_dir_rel = '/'.join(['..'] * len(pieces))
+            execroot_dir = os.path.join(old_root_dir, up_dir_rel)
+            # Change to potential bazel cache dir, and if the top-level piece is a symlink, assume that we should use that.
+            if os.path.isdir(os.path.join(execroot_dir, 'bazel-out')):
+                # We're in Bazel execroot. Normalize.
+                first_dir = os.path.normpath(os.path.join(execroot_dir, pieces[0]))
+                if os.path.islink(first_dir):
+                    extra = pieces[1:] + [sentinel['file']]
+                    root_file = os.path.join(os.readlink(first_dir), *extra)
+                    assert os.path.exists(root_file)
+                    root_alternatives.append(old_root_dir)
         root = os.path.dirname(root_file)
         return (root, root_alternatives)
 
