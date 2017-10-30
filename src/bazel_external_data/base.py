@@ -22,33 +22,26 @@ class Backend(object):
 
 
 class Remote(object):
-    def __init__(self, project, name, config_node, package = None):
-        self.project = project
-        if package:
-            self.package = package
-        else:
-            self.package = project.root_package
+    def __init__(self, package, name, config_node):
+        self.package = package
+        self.config_node = config_node
         self.name = name
         backend_type = config_node['backend']
-        self._backend = self.project.load_backend(backend_type, config_node)
+        self._backend = self.package.load_backend(backend_type, config_node)
 
         overlay_name = config_node.get('overlay')
-        self._overlay = None
+        self.overlay = None
         if overlay_name is not None:
-            self._overlay = self.package.get_remote(overlay_name)
+            self.overlay = self.package.get_remote(overlay_name)
 
     def has_overlay(self):
-        return self._overlay is not None
+        return self.overlay is not None
 
-    def has_parent_overlay(self):
-        # We should have not overlays that are descendants of this package; only ancestors.
-        return self.has_overlay() and self._overlay.package != self.package
-
-    def has_file(self, sha, check_overlay=True):
+    def has_file(self, sha, checkoverlay=True):
         if self._backend.has_file(sha):
             return True
-        elif check_overlay and self.has_overlay():
-            return self._overlay.has_file(sha)
+        elif checkoverlay and self.has_overlay():
+            return self.overlay.has_file(sha)
 
     def _download_file_direct(self, sha, output_path):
         # TODO: Make this more efficient...
@@ -56,19 +49,10 @@ class Remote(object):
             self._backend.download_file(sha, output_path)
         except DownloadError as e:
             if self.has_overlay():
-                self._overlay.download_file(sha, output_path)
+                self.overlay.download_file(sha, output_path)
             else:
                 # Rethrow
                 raise e
-
-    def _get_sha_cache_path(self, sha, create_dir=False):
-        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
-        a = sha[0:2]
-        b = sha[2:4]
-        out_dir = os.path.join(self.project.core.cache_dir, a, b)
-        if create_dir and not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
-        return os.path.join(out_dir, sha)
 
     def download_file(self, sha, output_file,
                       use_cache = True, symlink_from_cache = True):
@@ -111,7 +95,7 @@ class Remote(object):
 
         # Check if we need to download.
         if use_cache:
-            cache_path = self._get_sha_cache_path(sha, create_dir=True)
+            cache_path = self.package.get_sha_cache_path(sha, create_dir=True)
             util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
                 print("Using cached file")
@@ -147,6 +131,9 @@ class Package(object):
     def has_remote(self, name):
         return name in self._remotes or name in self._remotes_config
 
+    def load_backend(self, backend_type, config_node):
+        return self._project.load_backend(backend_type, config_node)
+
     def get_remote(self, name):
         if name == '..':
             assert self.parent, "Attempting to access parent remote at root package?"
@@ -167,11 +154,20 @@ class Package(object):
             self._remote_is_loading.append(name)
             remote_node = self._remotes_config[name]
             # Load remote.
-            remote = Remote(self._project, name, remote_node, package=self)
+            remote = Remote(self, name, remote_node)
             # Update.
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
             return remote
+
+    def get_sha_cache_path(self, sha, create_dir=False):
+        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
+        a = sha[0:2]
+        b = sha[2:4]
+        out_dir = os.path.join(self._project.core.cache_dir, a, b)
+        if create_dir and not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
+        return os.path.join(out_dir, sha)
 
 
 class Core(object):
@@ -202,18 +198,26 @@ class Project(object):
         # Should return copy for const-ness.
         return self.root_config
 
-    def debug_dump_remote(self, remote, dump_all = False):
-        package = remote.package
+    def _get_remote_config_file(self, remote):
+        package_file = util.find_key(self._packages, remote.package)
+        assert package_file is not None
+        return package_file
+
+    def debug_dump_remote(self, remote):
         # For each package, print its respective filepath.
-        package_dump = []
-        while package is not None:
-            package_file = util.find_key(self._packages, package)
-            package_dump.append({'config_file': package_file, 'config': package.config_node})
-            if dump_all or package.remote.has_parent_overlay():
-                package = package.parent
+        base = {}
+        node = base
+        while True:
+            config_file = self._get_remote_config_file(remote)
+            config = {remote.name: remote.config_node}
+            node.update(config_file=config_file, config=config)
+            remote = remote.overlay
+            if remote:
+                node['overlay'] = {}
+                node = node['overlay']
             else:
                 break
-        return package_dump
+        return base
 
     def get_relpath(self, filepath):
         # Get filepath relative to project root, using alternatives.
