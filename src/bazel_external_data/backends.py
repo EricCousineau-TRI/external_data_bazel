@@ -125,6 +125,6 @@ class GirderBackend(Backend):
 
 def get_default_backends():
     return {
-        "girder": GirderBackend,
         "direct": DirectBackend,
+        "girder": GirderBackend,
     }

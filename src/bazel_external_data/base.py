@@ -80,6 +80,7 @@ class Remote(object):
         @param symlink_from_cache
             If `use_cache` is true, this will place a symlink to the read-only
             cache file at `output_file`.
+        @returns 'cache' if there was a cachce hit, 'download' otherwise.
         """
 
         # Helper functions.
@@ -118,12 +119,14 @@ class Remote(object):
             cache_path = self.package.get_sha_cache_path(sha, create_dir=True)
             util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
-                print("Using cached file")
                 get_cached()
+                return 'cached'
             else:
                 get_download_and_cache()
+                return 'download'
         else:
             self.download_file_direct(sha, output_file)
+            return 'download'
 
     def upload_file(self, filepath):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
