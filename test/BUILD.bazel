@@ -7,8 +7,13 @@ filegroup(
 py_test(
     name = "test_basics",
     srcs = ["test_basics.py"],
+    deps = [
+        "//src/bazel_external_data:util",
+    ],
     data = [
         "//test/data",
+        "mock",
     ],
+    size = "small",
     visibility = ["//visibility:public"],
 )
