@@ -4,6 +4,8 @@ import os
 from bazel_external_data.base import ProjectSetup, Backend
 from bazel_external_data import config_helpers, util
 
+tmp_dir = '/tmp/bazel_external_data'
+
 class CustomProjectSetup(ProjectSetup):
     def __init__(self):
         ProjectSetup.__init__(self)
@@ -15,7 +17,7 @@ class CustomProjectSetup(ProjectSetup):
     def load_config(self, guess_filepath):
         project_config, user_config = ProjectSetup.load_config(self, guess_filepath)
         # Override cache directory.
-        tmp_cache = os.path.join('/tmp/bazel_external_data/test_cache')
+        tmp_cache = os.path.join(tmp_dir, 'test_cache')
         user_config['core']['cache_dir'] = tmp_cache
         # Continue.
         return project_config, user_config
@@ -34,14 +36,19 @@ class MockBackend(Backend):
     def __init__(self, project, config):
         Backend.__init__(self, project, config)
         self._dir = os.path.join(self.project.root, config['dir'])
+        self._upload_dir = os.path.join(tmp_dir, 'upload')
 
         # Crawl through files and compute SHAs.
         self._map = {}
-        for file in os.listdir(self._dir):
-            filepath = os.path.join(self._dir, file)
-            if os.path.isfile(filepath):
-                sha = util.compute_sha(filepath)
-                self._map[sha] = filepath
+        def crawl(cur_dir):
+            for file in os.listdir(cur_dir):
+                filepath = os.path.join(cur_dir, file)
+                if os.path.isfile(filepath):
+                    sha = util.compute_sha(filepath)
+                    self._map[sha] = filepath
+        crawl(self._dir)
+        if os.path.exists(self._upload_dir):
+            crawl(self._upload_dir)
 
     def has_file(self, sha):
         return sha in self._map
@@ -55,5 +62,10 @@ class MockBackend(Backend):
     def upload_file(self, sha, filepath):
         sha = util.compute_sha(filepath)
         assert sha not in self._map
-        # Just store the filepath temporarily.
-        self._map[sha] = filepath
+        if not os.path.isdir(self._upload_dir):
+            os.makedirs(self._upload_dir)
+        # Copy the file.
+        dest = os.path.join(self._upload_dir, sha)
+        util.subshell(['cp', filepath, dest])
+        # Store the SHA.
+        self._map[sha] = dest

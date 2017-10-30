@@ -107,7 +107,7 @@ class Remote(object):
 
     def upload_file(self, filepath):
         sha = util.compute_sha(filepath)
-        if self._backend.has_file(sha, check_overlay=False):
+        if self._backend.has_file(sha):
             print("File already uploaded")
         else:
             self._backend.upload_file(sha, filepath)
