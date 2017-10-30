@@ -5,7 +5,6 @@ from bazel_external_data import util, config_helpers
 SHA_SUFFIX = '.sha512'
 
 # TODO: Rename `Project` -> `Workspace`
-# TODO: Rename `Package` -> `Package`
 
 class Backend(object):
     def __init__(self, project, config_node):
@@ -192,7 +191,7 @@ class Project(object):
         # Create root package and parse base remotes.
         self._packages = {}
         self.root_package = Package(self, root_config['package'], None)
-        self._packages['<project config>'] = self.root_package
+        self._packages['<project_root>'] = self.root_package
 
     def debug_dump_config(self):
         # Should return copy for const-ness.
