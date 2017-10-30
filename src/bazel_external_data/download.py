@@ -77,7 +77,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
 
     if args.debug_remote:
         dump = [{
-            "file": sha_file,
+            "file": project.get_relpath(sha_file),
             "remote": project.debug_dump_remote(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)

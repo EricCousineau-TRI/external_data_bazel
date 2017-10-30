@@ -201,7 +201,10 @@ class Project(object):
     def _get_remote_config_file(self, remote):
         package_file = util.find_key(self._packages, remote.package)
         assert package_file is not None
-        return package_file
+        if package_file.startswith('<'):
+            return package_file
+        else:
+            return self.get_relpath(package_file)
 
     def debug_dump_remote(self, remote):
         # For each remote, print its respective filepath.
