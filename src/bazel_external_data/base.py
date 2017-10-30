@@ -7,7 +7,7 @@ SHA_SUFFIX = '.sha512'
 # TODO: Rename `Project` -> `Workspace`
 
 class Backend(object):
-    def __init__(self, project, config_node):
+    def __init__(self, project, config):
         self.project = project
 
     def has_file(self, sha):
@@ -21,14 +21,14 @@ class Backend(object):
 
 
 class Remote(object):
-    def __init__(self, package, name, config_node):
+    def __init__(self, package, name, config):
         self.package = package
-        self.config_node = config_node
+        self.config = config
         self.name = name
-        backend_type = config_node['backend']
-        self._backend = self.package.load_backend(backend_type, config_node)
+        backend_type = config['backend']
+        self._backend = self.package.load_backend(backend_type, config)
 
-        overlay_name = config_node.get('overlay')
+        overlay_name = config.get('overlay')
         self.overlay = None
         if overlay_name is not None:
             self.overlay = self.package.get_remote(overlay_name)
@@ -115,13 +115,13 @@ class Remote(object):
 
 
 class Package(object):
-    def __init__(self, config_node, project, parent):
+    def __init__(self, config, project, parent):
         self._project = project
         self.parent = parent
-        remote_name = config_node['remote']
+        remote_name = config['remote']
 
-        self.config_node = config_node  # For debugging.
-        self._remotes_config = config_node['remotes']
+        self.config = config  # For debugging.
+        self._remotes_config = config['remotes']
         self._remotes = {}
         self._remote_is_loading = []
 
@@ -130,8 +130,8 @@ class Package(object):
     def has_remote(self, name):
         return name in self._remotes or name in self._remotes_config
 
-    def load_backend(self, backend_type, config_node):
-        return self._project.load_backend(backend_type, config_node)
+    def load_backend(self, backend_type, config):
+        return self._project.load_backend(backend_type, config)
 
     def get_remote(self, name):
         if name == '..':
@@ -170,19 +170,19 @@ class Package(object):
 
 
 class Core(object):
-    def __init__(self, config_node):
-        self.cache_dir = os.path.expanduser(config_node['cache_dir'])
+    def __init__(self, config):
+        self.cache_dir = os.path.expanduser(config['cache_dir'])
 
 
 class Project(object):
-    def __init__(self, config_node, user_config, setup):
-        self.config_node = config_node
+    def __init__(self, config, user_config, setup):
+        self.config = config
         self.user_config = user_config
         self.setup = setup
 
         self.core = Core(user_config['core'])
 
-        sub_config = config_node['project']
+        sub_config = config['project']
         self.name = sub_config['name']
         self.root = sub_config['root']
         self._root_alternatives = sub_config.get('root_alternatives', [])
@@ -193,7 +193,7 @@ class Project(object):
 
         # Create root package (parsing remotes).
         self._packages = {}
-        self.root_package = Package(self.config_node['package'], self, None)
+        self.root_package = Package(self.config['package'], self, None)
         self._packages[sub_config['config_file']] = self.root_package
 
     def debug_dump_user_config(self):
@@ -201,7 +201,7 @@ class Project(object):
 
     def debug_dump_config(self):
         # Should return copy for const-ness.
-        return self.config_node
+        return self.config
 
     def _get_remote_config_file(self, remote):
         package_file = util.find_key(self._packages, remote.package)
@@ -218,7 +218,7 @@ class Project(object):
         while remote:
             print(remote)
             config_file = self._get_remote_config_file(remote)
-            config = {remote.name: remote.config_node}
+            config = {remote.name: remote.config}
             node.update(config_file=config_file, config=config)
             remote = remote.overlay
             if remote:
@@ -248,9 +248,9 @@ class Project(object):
     def register_backends(self, backends):
         util.merge_unique(self._backends, backends)
 
-    def load_backend(self, backend_type, config_node):
+    def load_backend(self, backend_type, config):
         backend_cls = self._backends[backend_type]
-        return backend_cls(self, config_node)
+        return backend_cls(self, config)
 
     def load_package(self, filepath):
         config_files = self.setup.get_package_config_files(self, filepath)

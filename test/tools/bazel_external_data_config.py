@@ -31,9 +31,9 @@ def get_setup():
 
 
 class MockBackend(Backend):
-    def __init__(self, project, config_node):
-        Backend.__init__(self, project, config_node)
-        self._dir = os.path.join(self.project.root, config_node['dir'])
+    def __init__(self, project, config):
+        Backend.__init__(self, project, config)
+        self._dir = os.path.join(self.project.root, config['dir'])
 
         # Crawl through files and compute SHAs.
         self._map = {}

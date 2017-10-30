@@ -19,13 +19,13 @@ def _reduce_url(url_full):
     return url
 
 class GirderBackend(Backend):
-    def __init__(self, project, config_node):
-        Backend.__init__(self, project, config_node)
+    def __init__(self, project, config):
+        Backend.__init__(self, project, config)
 
-        url_full = config_node['url']
+        url_full = config['url']
         self._url = _reduce_url(url_full)
         self._api_url = "{}/api/v1".format(self._url)
-        self._folder_id = config_node['folder_id']
+        self._folder_id = config['folder_id']
         # Get (optional) authentication information.
         url_config_node = get_chain(self.project.user_config, ['girder', 'url', url_full])
         self._api_key = get_chain(url_config_node, ['api_key'])
@@ -102,9 +102,9 @@ class GirderBackend(Backend):
 # For direct file downloads.
 # Example: download --remote="{backend: direct, url: '...'}"
 class DirectBackend(Backend):
-    def __init__(self, project, config_node):
+    def __init__(self, project, config):
         Backend.__init__(self, project)
-        self._url = config_node['url']
+        self._url = config['url']
 
     def download_file(self, sha, output_file):
         # Ignore the SHA. Just download. Everything else will validate.
