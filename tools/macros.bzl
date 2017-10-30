@@ -1,6 +1,6 @@
 ENABLE_WARN = True
 VERBOSE = False
-DEBUG = True
+DEBUG = False
 
 SHA_SUFFIX = ".sha512"
 
@@ -77,14 +77,16 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
                   "\n  cmd: {}".format(cmd))
 
         native.genrule(
-          name = name,
-          srcs = [sha_file],
-          outs = [file],
-          cmd = cmd,
-          tools = [tool],
-          tags = ["external_data"],
-          local = 1,  # Just changes `execroot`, but paths are still Bazel-fied.
-          visibility = visibility,
+            name = name,
+            srcs = [sha_file],
+            outs = [file],
+            cmd = cmd,
+            tools = [tool],
+            tags = ["external_data"],
+            # Changes `execroot`, and symlinks the files that we need to crawl the directory
+            # structure and get hierarchical packages.
+            local = 1,
+            visibility = visibility,
         )
     else:
         fail("Invalid mode: {}".format(mode))
