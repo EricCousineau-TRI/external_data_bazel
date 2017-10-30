@@ -9,12 +9,22 @@ from bazel_external_data.base import Backend
 # If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
 
 
-
 class DirectBackend(Backend):
     """ For direct file downloads. """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
         self._url = config['url']
+
+    def has_file(self, sha):
+        first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=self._url))
+        bad = ["HTTP/1.1 404 Not Found"]
+        good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
+        if first_line in bad:
+            return False
+        elif first_line in good:
+            return True
+        else:
+            raise RuntimeError("Unknown code: {}".format(first_line))
 
     def download_file(self, sha, output_file):
         # Ignore the SHA. Just download. Everything else will validate.

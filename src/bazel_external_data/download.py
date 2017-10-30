@@ -29,8 +29,9 @@ parser.add_argument('--symlink_from_cache', action='store_true',
                     help='Use a symlink from the cache rather than copying the file.')
 parser.add_argument('--allow_relpath', action='store_true',
                     help='Permit relative paths. Having this on by default makes using Bazel simpler.')
-parser.add_argument('--check_file', action='store_true',
-                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
+parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
+                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
+                         + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 parser.add_argument('--debug_project_config', action='store_true',
@@ -70,16 +71,24 @@ def do_download(project, sha_file, output_file, remote_in=None):
     else:
         remote = remote_in
 
-    if args.debug_remote_config:
+    def dump_remote_config():
         dump = [{
             "file": project.get_relpath(sha_file),
             "remote": project.debug_dump_remote(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
 
-    if args.check_file:
+    if args.debug_remote_config:
+        dump_remote_config()
+
+    if args.check_file != 'none':
         if not remote.has_file(sha):
+            if not args.debug_remote_config:
+                dump_remote_config()
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
+        if args.check_file == 'only':
+            # Skip fetching the file.
+            return
 
     # Ensure that we do not overwrite existing files.
     if os.path.isfile(output_file):
