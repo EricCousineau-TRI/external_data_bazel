@@ -196,6 +196,9 @@ class Project(object):
         self.root_package = Package(self.config_node['package'], self, None)
         self._packages[sub_config['config_file']] = self.root_package
 
+    def debug_dump_user_config(self):
+        return self.user_config
+
     def debug_dump_config(self):
         # Should return copy for const-ness.
         return self.config_node

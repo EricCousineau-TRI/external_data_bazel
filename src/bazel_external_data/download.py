@@ -34,9 +34,11 @@ parser.add_argument('--check_file', action='store_true',
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 parser.add_argument('--debug_config', action='store_true',
-                    help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
+                    help='Dump configuration output for the project.')
+parser.add_argument('--debug_user', action='store_true',
+                    help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('--debug_remote', action='store_true',
-                    help='Dump configuration for the chain of packages and remotes for the files.')
+                    help='Dump configuration for the remotes used for the each file.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
@@ -93,6 +95,8 @@ def do_download(project, sha_file, output_file, remote_in=None):
 project = base.load_project(os.getcwd())
 if args.debug_config:
     yaml.dump(project.debug_dump_config(), sys.stdout, default_flow_style=False)
+if args.debug_user:
+    yaml.dump(project.debug_dump_user_config(), sys.stdout, default_flow_style=False)
 
 remote_in = None
 if args.remote:
