@@ -4,18 +4,26 @@ load("//tools:macros.bzl",
     "get_original_files"
 )
 
-CUSTOM_TOOL = "//test/tools:download"
+TOOL = "//test/tools:download"
+SETTINGS = struct(
+    ENABLE_WARN = True,
+    VERBOSE = False,
+    DEBUG_CONFIG = False,
+    CHECK_FILE = False,
+)
 
 def external_data(*args, **kwargs):
     external_data_impl(
         *args,
-        tool = CUSTOM_TOOL,
+        tool = TOOL,
+        settings = SETTINGS,
         **kwargs
     )
 
 def external_data_group(*args, **kwargs):
     external_data_group_impl(
         *args,
-        tool = CUSTOM_TOOL,
+        tool = TOOL,
+        settings = SETTINGS,
         **kwargs
     )

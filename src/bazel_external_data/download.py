@@ -6,7 +6,10 @@
 from __future__ import absolute_import, print_function
 import sys
 import os
+import yaml
 import argparse
+
+from bazel_external_data import base, util
 
 assert __name__ == '__main__'
 
@@ -26,22 +29,23 @@ parser.add_argument('--symlink_from_cache', action='store_true',
                     help='Use a symlink from the cache rather than copying the file.')
 parser.add_argument('--allow_relpath', action='store_true',
                     help='Permit relative paths. Having this on by default makes using Bazel simpler.')
-parser.add_argument('--check_file', action='store_true',
-                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
+parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
+                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
+                         + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
-parser.add_argument('--debug_config', action='store_true',
-                    help='Dump configuration output for the project / file. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--debug_remote', action='store_true',
-                    help='Dump configuration for the chain of scopes and remotes for the files.')
+parser.add_argument('--debug_project_config', action='store_true',
+                    help='Dump configuration output for the project.')
+parser.add_argument('--debug_user_config', action='store_true',
+                    help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
+parser.add_argument('--debug_remote_config', action='store_true',
+                    help='Dump configuration for the remotes used for the each file.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
 args = parser.parse_args()
 
-from bazel_external_data import util
-
-SHA_SUFFIX = util.SHA_SUFFIX
+SHA_SUFFIX = base.SHA_SUFFIX
 
 def do_download(project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
@@ -52,13 +56,6 @@ def do_download(project, sha_file, output_file, remote_in=None):
     else:
         sha_file = os.path.abspath(sha_file)
         output_file = os.path.abspath(output_file)
-
-    # Ensure that we do not overwrite existing files.
-    if os.path.isfile(output_file):
-        if args.force:
-            os.remove(output_file)
-        else:
-            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
     # Get the sha.
     if not os.path.isfile(sha_file):
@@ -74,20 +71,42 @@ def do_download(project, sha_file, output_file, remote_in=None):
     else:
         remote = remote_in
 
-    if args.debug_remote:
-        project.debug_dump_remote(remote, sys.stdout)
+    def dump_remote_config():
+        dump = [{
+            "file": project.get_relpath(sha_file),
+            "remote": project.debug_dump_remote(remote),
+        }]
+        yaml.dump(dump, sys.stdout, default_flow_style=False)
 
-    if args.check_file:
+    if args.debug_remote_config:
+        dump_remote_config()
+
+    if args.check_file != 'none':
         if not remote.has_file(sha):
+            if not args.debug_remote_config:
+                dump_remote_config()
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
+        if args.check_file == 'only':
+            # Skip fetching the file.
+            return
 
-    remote.download_file(sha, output_file,
-                         use_cache=use_cache,
-                         symlink_from_cache=args.symlink_from_cache)
+    # Ensure that we do not overwrite existing files.
+    if os.path.isfile(output_file):
+        if args.force:
+            os.remove(output_file)
+        else:
+            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
-project = util.load_project(os.getcwd())
-if args.debug_config:
-    project.debug_dump_config(sys.stdout)
+    download_type = remote.download_file(
+        sha, output_file,
+        use_cache=use_cache,
+        symlink_from_cache=args.symlink_from_cache)
+
+project = base.load_project(os.getcwd())
+if args.debug_user_config:
+    yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
+if args.debug_project_config:
+    yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
 remote_in = None
 if args.remote:
@@ -106,7 +125,7 @@ else:
         if args.keep_going:
             try:
                 action()
-            except Exception as e:
+            except RuntimeError as e:
                 util.eprint(e)
                 util.eprint("Continuing (--keep_going).")
         else:

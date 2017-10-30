@@ -1,6 +1,11 @@
 py_library(
     name = "util",
-    srcs = ["util.py"],
+    srcs = [
+        "backends.py",
+        "config_helpers.py",
+        "base.py",
+        "util.py",
+    ],
     imports = [".."],
     visibility=["//visibility:public"],
 )

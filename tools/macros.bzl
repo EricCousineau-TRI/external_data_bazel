@@ -1,6 +1,9 @@
-ENABLE_WARN = True
-VERBOSE = False
-DEBUG = True
+SETTINGS_DEFAULT = struct(
+    ENABLE_WARN = True,
+    VERBOSE = False,
+    DEBUG_CONFIG = False,
+    CHECK_FILE = False,
+)
 
 SHA_SUFFIX = ".sha512"
 
@@ -9,7 +12,7 @@ SHA_SUFFIX = ".sha512"
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None):
+def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None, settings=SETTINGS_DEFAULT):
     """
     Macro for defining a large file.
 
@@ -34,7 +37,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
     if mode == 'devel':
         # TODO(eric.cousineau): It'd be nice if there is a way to (a) check if there is
         # a `*.sha512` file, and if so, (b) check the sha of the input file.
-        if ENABLE_WARN:
+        if settings.ENABLE_WARN:
             # TODO(eric.cousineau): Print full location of given file?
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +
                   "\n  Using local workspace file in development mode." +
@@ -44,7 +47,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             visibility = visibility,
         )
     elif mode in ['normal', 'no_cache']:
-        name = "download_{}".format(file)
+        name = "{}__download".format(file)
         sha_file = file + SHA_SUFFIX
         if tool == None:
             fail("Must define custom tool for a custom repository")
@@ -69,34 +72,38 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
-        if DEBUG:
-            cmd += "--debug_config --debug_remote "
+        if settings.DEBUG_CONFIG:
+            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
+        if settings.CHECK_FILE:
+            cmd += "--check_file=extra "
 
-        if VERBOSE:
+        if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
         native.genrule(
-          name = name,
-          srcs = [sha_file],
-          outs = [file],
-          cmd = cmd,
-          tools = [tool],
-          tags = ["external_data"],
-          local = 1,  # Just changes `execroot`, but paths are still Bazel-fied.
-          visibility = visibility,
+            name = name,
+            srcs = [sha_file],
+            outs = [file],
+            cmd = cmd,
+            tools = [tool],
+            tags = ["external_data"],
+            # Changes `execroot`, and symlinks the files that we need to crawl the directory
+            # structure and get hierarchical packages.
+            local = 1,
+            visibility = visibility,
         )
     else:
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None):
+def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None, settings=SETTINGS_DEFAULT):
     """ @see external_data """
 
-    if ENABLE_WARN and files_devel and mode == "devel":
+    if settings.ENABLE_WARN and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
-    kwargs = {'tool': tool, 'visibility': visibility}
+    kwargs = {'tool': tool, 'visibility': visibility, 'settings': settings}
 
     for file in files:
         if file not in files_devel:
@@ -131,13 +138,3 @@ def get_original_files(sha_files):
         file = sha_file[:-len(SHA_SUFFIX)]
         files.append(file)
     return files
-
-
-# def external_data_sha_group(name, sha_files, **kwargs):
-#     """ Enable globbing of *.sha512 files.
-#     @see external_data """
-#     external_data_group(
-#         name = name,
-#         files = get_original_files(sha_files),
-#         **kwargs
-#     )
