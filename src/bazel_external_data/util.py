@@ -66,8 +66,9 @@ def curl(args):
 def _lock_path(filepath):
     return filepath + ".lock"
 
-def wait_file_read_lock(filepath, timeout=60, interval=0.01):
+def wait_file_read_lock(filepath, timeout=60, interval=0.01, warn_at=2):
     lock = _lock_path(filepath)
+    warned = False
     if os.path.isfile(lock):
         now = time.time()
         while os.path.isfile(lock):
@@ -75,6 +76,10 @@ def wait_file_read_lock(filepath, timeout=60, interval=0.01):
             elapsed = time.time() - now
             if elapsed > timeout:
                 raise RuntimeError("Timeout at {}s when attempting to acquire lock: {}".format(timeout, lock))
+            elif elapsed > warn_at and not warned:
+                eprint("Waiting on lock file for a maximum of {}s: {}".format(timeout, lock))
+                eprint("  If this persistent, please consider removing this file.")
+                warned = True
 
 class FileWriteLock(object):
     def __init__(self, filepath):

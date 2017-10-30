@@ -42,13 +42,15 @@ class Remote(object):
         elif checkoverlay and self.has_overlay():
             return self.overlay.has_file(sha)
 
-    def _download_file_direct(self, sha, output_path):
-        # TODO: Make this more efficient...
+    def download_file_direct(self, sha, output_file):
+        # Calling components should ensure that this invariant is preserved.
+        assert not os.path.exists(output_file)
         try:
-            self._backend.download_file(sha, output_path)
+            self._backend.download_file(sha, output_file)
+            util.check_sha(sha, output_file)
         except util.DownloadError as e:
             if self.has_overlay():
-                self.overlay._download_file_direct(sha, output_path)
+                self.overlay.download_file_direct(sha, output_file)
             else:
                 # Rethrow
                 raise e
@@ -67,7 +69,7 @@ class Remote(object):
             if not skip_sha_check:
                 if not util.check_sha(sha, output_file, do_throw=False):
                     util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
-                    # `os.remove()` will remove read-only files, reguardless.
+                    # `os.remove()` will remove read-only files without prompting.
                     os.remove(cache_path)
                     if os.path.islink(output_file):
                         # In this situation, the cache was corrupted (somehow), and Bazel
@@ -78,19 +80,13 @@ class Remote(object):
                         os.remove(output_file)
                     get_download_and_cache()
 
-        def get_download(output_file):
-            self._download_file_direct(sha, output_file)
-            util.check_sha(sha, output_file)
-
         def get_download_and_cache():
             with util.FileWriteLock(cache_path):
-                get_download(cache_path)
+                self.download_file_direct(sha, cache_path)
                 # Make cache file read-only.
                 util.subshell(['chmod', '-w', cache_path])
             # Use cached file - `get_download()` has already checked the sha.
             get_cached(skip_sha_check=True)
-
-        # TODO(eric.cousineau): Throw an error if the file already exists?
 
         # Check if we need to download.
         if use_cache:
@@ -102,7 +98,7 @@ class Remote(object):
             else:
                 get_download_and_cache()
         else:
-            get_download(output_file)
+            self.download_file_direct(sha, output_file)
 
 
     def upload_file(self, filepath):
@@ -206,10 +202,7 @@ class Project(object):
     def _get_remote_config_file(self, remote):
         package_file = util.find_key(self._packages, remote.package)
         assert package_file is not None
-        if package_file.startswith('<'):
-            return package_file
-        else:
-            return self.get_relpath(package_file)
+        return package_file
 
     def debug_dump_remote(self, remote):
         # For each remote, print its respective filepath.
