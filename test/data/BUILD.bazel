@@ -1,4 +1,4 @@
-load("//test/tools:external_data.bzl",
+load("//tools:external_data.bzl",
     "external_data",
     "external_data_group",
     "get_original_files",

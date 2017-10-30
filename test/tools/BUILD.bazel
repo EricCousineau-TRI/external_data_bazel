@@ -3,16 +3,16 @@ py_library(
     srcs = ["bazel_external_data_config.py"],
     imports = ["."],
     deps = [
-        "//src/bazel_external_data:util",
+        "@bazel_external_data//src/bazel_external_data:util",
     ],
     data = [
-        "//test:sentinel",
+        "//:sentinel",
     ],
 )
 
 py_binary(
     name = "download",
-    srcs = ["//src/bazel_external_data:download.py"],
+    srcs = ["@bazel_external_data//src/bazel_external_data:download.py"],
     deps = [
         ":config",
     ],
@@ -21,7 +21,7 @@ py_binary(
 
 py_binary(
     name = "upload",
-    srcs = ["//src/bazel_external_data:upload.py"],
+    srcs = ["@bazel_external_data//src/bazel_external_data:upload.py"],
     deps = [
         ":config",
     ],

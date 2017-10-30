@@ -1,0 +1,6 @@
+workspace(name = "test")
+
+local_repository(
+    name = "bazel_external_data",
+    path = "..",
+)

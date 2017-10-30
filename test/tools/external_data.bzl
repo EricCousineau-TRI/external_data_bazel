@@ -1,10 +1,10 @@
-load("//tools:macros.bzl",
+load("@bazel_external_data//tools:macros.bzl",
     "external_data_impl",
     "external_data_group_impl",
     "get_original_files"
 )
 
-TOOL = "//test/tools:download"
+TOOL = "//tools:download"
 SETTINGS = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
