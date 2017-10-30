@@ -10,6 +10,7 @@ external_data(
     file = "basic.bin",
 )
 
+# @warning This will not be downloadable via the command-line.
 external_data(
     file = "direct.bin",
     url = "https://gist.githubusercontent.com/EricCousineau-TRI/0f331573f686b741f5f70de0f91a8cc1/raw/2eb960a76ec56f8a8a68cf5473d93d7edf75d5ad/direct.bin",  # noqa
@@ -23,9 +24,10 @@ external_data_group(
 external_data(
     file = "package/extra.bin",
 )
+
 # @note package/basic.bin is invalid, since it's in `master`, but this package does not overlay.
 # In general, this may pass, as it's not cached.
-# To fix this, add DEBUG_CHECK.
+# To fix this, set SETTINGS.CHECK_FILE to True in `external_data.bzl`.
 
 external_data_group(
     name = "package_overlay",

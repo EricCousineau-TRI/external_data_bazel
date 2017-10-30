@@ -97,9 +97,10 @@ def do_download(project, sha_file, output_file, remote_in=None):
         else:
             raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
-    remote.download_file(sha, output_file,
-                         use_cache=use_cache,
-                         symlink_from_cache=args.symlink_from_cache)
+    download_type = remote.download_file(
+        sha, output_file,
+        use_cache=use_cache,
+        symlink_from_cache=args.symlink_from_cache)
 
 project = base.load_project(os.getcwd())
 if args.debug_user_config:
