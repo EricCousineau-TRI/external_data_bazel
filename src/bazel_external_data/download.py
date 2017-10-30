@@ -56,13 +56,6 @@ def do_download(project, sha_file, output_file, remote_in=None):
         sha_file = os.path.abspath(sha_file)
         output_file = os.path.abspath(output_file)
 
-    # Ensure that we do not overwrite existing files.
-    if os.path.isfile(output_file):
-        if args.force:
-            os.remove(output_file)
-        else:
-            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
-
     # Get the sha.
     if not os.path.isfile(sha_file):
         raise RuntimeError("ERROR: File not found: {}".format(sha_file))
@@ -87,6 +80,13 @@ def do_download(project, sha_file, output_file, remote_in=None):
     if args.check_file:
         if not remote.has_file(sha):
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
+
+    # Ensure that we do not overwrite existing files.
+    if os.path.isfile(output_file):
+        if args.force:
+            os.remove(output_file)
+        else:
+            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
     remote.download_file(sha, output_file,
                          use_cache=use_cache,

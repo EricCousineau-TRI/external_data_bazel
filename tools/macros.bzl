@@ -1,6 +1,7 @@
 ENABLE_WARN = True
 VERBOSE = False
 DEBUG = False
+DEBUG_CHECK = True
 
 SHA_SUFFIX = ".sha512"
 
@@ -44,7 +45,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             visibility = visibility,
         )
     elif mode in ['normal', 'no_cache']:
-        name = "download_{}".format(file)
+        name = "{}__download".format(file)
         sha_file = file + SHA_SUFFIX
         if tool == None:
             fail("Must define custom tool for a custom repository")
@@ -70,7 +71,9 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         # Argument: Output file.
         cmd += "--output $@ "
         if DEBUG:
-            cmd += "--debug_user_config --debug_project_config --debug_remote_config"
+            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
+        if DEBUG_CHECK:
+            cmd += "--check_file "
 
         if VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +

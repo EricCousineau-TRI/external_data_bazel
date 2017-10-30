@@ -1,6 +1,7 @@
 import json
 import os
 
+from bazel_external_data import util
 from bazel_external_data.base import Backend
 
 # TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
@@ -12,7 +13,7 @@ from bazel_external_data.base import Backend
 class DirectBackend(Backend):
     """ For direct file downloads. """
     def __init__(self, config, project):
-        Backend.__init__(self, project)
+        Backend.__init__(self, config, project)
         self._url = config['url']
 
     def download_file(self, sha, output_file):

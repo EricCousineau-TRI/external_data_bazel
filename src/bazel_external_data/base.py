@@ -55,7 +55,7 @@ class Remote(object):
         """ Returns whether this remote (or its overlay) has a given SHA. """
         if self._backend.has_file(sha):
             return True
-        elif checkoverlay and self.has_overlay():
+        elif check_overlay and self.has_overlay():
             return self.overlay.has_file(sha)
 
     def download_file_direct(self, sha, output_file):
