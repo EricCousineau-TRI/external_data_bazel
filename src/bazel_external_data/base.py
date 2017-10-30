@@ -37,7 +37,7 @@ class Remote(object):
     def has_overlay(self):
         return self.overlay is not None
 
-    def has_file(self, sha, checkoverlay=True):
+    def has_file(self, sha, check_overlay=True):
         if self._backend.has_file(sha):
             return True
         elif checkoverlay and self.has_overlay():
@@ -47,9 +47,9 @@ class Remote(object):
         # TODO: Make this more efficient...
         try:
             self._backend.download_file(sha, output_path)
-        except DownloadError as e:
+        except util.DownloadError as e:
             if self.has_overlay():
-                self.overlay.download_file(sha, output_path)
+                self.overlay._download_file_direct(sha, output_path)
             else:
                 # Rethrow
                 raise e
@@ -108,7 +108,7 @@ class Remote(object):
 
     def upload_file(self, filepath):
         sha = util.compute_sha(filepath)
-        if self._backend.has_file(sha):
+        if self._backend.has_file(sha, check_overlay=False):
             print("File already uploaded")
         else:
             self._backend.upload_file(sha, filepath)
@@ -204,17 +204,19 @@ class Project(object):
         return package_file
 
     def debug_dump_remote(self, remote):
-        # For each package, print its respective filepath.
+        # For each remote, print its respective filepath.
         base = {}
         node = base
-        while True:
+        while remote:
+            print(remote)
             config_file = self._get_remote_config_file(remote)
             config = {remote.name: remote.config_node}
             node.update(config_file=config_file, config=config)
             remote = remote.overlay
             if remote:
-                node['overlay'] = {}
-                node = node['overlay']
+                parent = node
+                node = {}
+                parent['overlay'] = node
             else:
                 break
         return base
