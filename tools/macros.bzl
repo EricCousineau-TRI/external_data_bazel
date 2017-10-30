@@ -70,7 +70,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         # Argument: Output file.
         cmd += "--output $@ "
         if DEBUG:
-            cmd += "--debug_config --debug_remote "
+            cmd += "--debug_user_config --debug_project_config --debug_remote_config"
 
         if VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +

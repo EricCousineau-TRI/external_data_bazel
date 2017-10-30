@@ -33,11 +33,11 @@ parser.add_argument('--check_file', action='store_true',
                     help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
-parser.add_argument('--debug_config', action='store_true',
+parser.add_argument('--debug_project_config', action='store_true',
                     help='Dump configuration output for the project.')
-parser.add_argument('--debug_user', action='store_true',
+parser.add_argument('--debug_user_config', action='store_true',
                     help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--debug_remote', action='store_true',
+parser.add_argument('--debug_remote_config', action='store_true',
                     help='Dump configuration for the remotes used for the each file.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
@@ -77,7 +77,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
     else:
         remote = remote_in
 
-    if args.debug_remote:
+    if args.debug_remote_config:
         dump = [{
             "file": project.get_relpath(sha_file),
             "remote": project.debug_dump_remote(remote),
@@ -93,10 +93,10 @@ def do_download(project, sha_file, output_file, remote_in=None):
                          symlink_from_cache=args.symlink_from_cache)
 
 project = base.load_project(os.getcwd())
-if args.debug_config:
-    yaml.dump(project.debug_dump_config(), sys.stdout, default_flow_style=False)
-if args.debug_user:
-    yaml.dump(project.debug_dump_user_config(), sys.stdout, default_flow_style=False)
+if args.debug_user_config:
+    yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
+if args.debug_project_config:
+    yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
 remote_in = None
 if args.remote:
@@ -115,7 +115,7 @@ else:
         if args.keep_going:
             try:
                 action()
-            except Exception as e:
+            except RuntimeError as e:
                 util.eprint(e)
                 util.eprint("Continuing (--keep_going).")
         else:

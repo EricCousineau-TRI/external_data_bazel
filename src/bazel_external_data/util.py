@@ -77,8 +77,9 @@ def wait_file_read_lock(filepath, timeout=60, interval=0.01, warn_at=2):
             if elapsed > timeout:
                 raise RuntimeError("Timeout at {}s when attempting to acquire lock: {}".format(timeout, lock))
             elif elapsed > warn_at and not warned:
-                eprint("Waiting on lock file for a maximum of {}s: {}".format(timeout, lock))
-                eprint("  If this persistent, please consider removing this file.")
+                eprint("Waiting on lock file for a maximum of {}s:".format(timeout))
+                eprint("  '{}'".format(lock))
+                eprint("  If this persists, please consider removing this file.")
                 warned = True
 
 class FileWriteLock(object):
@@ -94,16 +95,10 @@ class FileWriteLock(object):
         assert os.path.isfile(self.lock)
         os.remove(self.lock)
 
-def find_file_sentinel(start_dir, sentinel_file, file_type='file', max_depth=6):
+def find_file_sentinel(start_dir, sentinel_file, file_type='file', max_depth=100):
     cur_dir = start_dir
-    if file_type == 'file':
-        file_test = os.path.isfile
-    elif file_type == 'dir':
-        file_test = os.path.isdir
-    elif file_type == 'any':
-        file_test = os.path.exists
-    else:
-        raise RuntimeError("Internal error: Invalid file_type {}".format(file_type))
+    file_tests = {'any': os.path.exists, 'file': os.path.isfile, 'dir': os.path.isdir}
+    file_test = file_tests[file_type]
     assert len(cur_dir) > 0
     for i in xrange(max_depth):
         assert os.path.isdir(cur_dir)

@@ -7,6 +7,19 @@ from bazel_external_data.base import Backend
 # dependency.
 # If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
 
+
+
+class DirectBackend(Backend):
+    """ For direct file downloads. """
+    def __init__(self, config, project):
+        Backend.__init__(self, project)
+        self._url = config['url']
+
+    def download_file(self, sha, output_file):
+        # Ignore the SHA. Just download. Everything else will validate.
+        util.curl('-L -o {output_file} {url}'.format(url=self._url, output_file=output_file))
+
+
 def _reduce_url(url_full):
     begin = '['
     end = '] '
@@ -19,15 +32,15 @@ def _reduce_url(url_full):
     return url
 
 class GirderBackend(Backend):
-    def __init__(self, project, config):
-        Backend.__init__(self, project, config)
+    def __init__(self, config, project):
+        Backend.__init__(self, config, project)
 
         url_full = config['url']
         self._url = _reduce_url(url_full)
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config['folder_id']
         # Get (optional) authentication information.
-        url_config_node = get_chain(self.project.user_config, ['girder', 'url', url_full])
+        url_config_node = get_chain(self.project.user.config, ['girder', 'url', url_full])
         self._api_key = get_chain(url_config_node, ['api_key'])
         self._token = None
         self._girder_client = None
@@ -97,18 +110,6 @@ class GirderBackend(Backend):
         with open(filepath, 'rb') as fd:
             print("Uploading: {}".format(filepath))
             gc.uploadFile(self._folder_id, fd, name=item_name, size=size, parentType='folder', reference=ref)
-
-
-# For direct file downloads.
-# Example: download --remote="{backend: direct, url: '...'}"
-class DirectBackend(Backend):
-    def __init__(self, project, config):
-        Backend.__init__(self, project)
-        self._url = config['url']
-
-    def download_file(self, sha, output_file):
-        # Ignore the SHA. Just download. Everything else will validate.
-        util.curl('-L -o {output_file} {url}'.format(url=self._url, output_file=output_file))
 
 
 def get_default_backends():

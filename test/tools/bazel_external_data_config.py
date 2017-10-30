@@ -15,12 +15,12 @@ class CustomProjectSetup(ProjectSetup):
         self.sentinel = {'file': '.custom-sentinel'}
 
     def load_config(self, guess_filepath):
-        project_config, user_config = ProjectSetup.load_config(self, guess_filepath)
+        root_config, user_config = ProjectSetup.load_config(self, guess_filepath)
         # Override cache directory.
         tmp_cache = os.path.join(tmp_dir, 'test_cache')
         user_config['core']['cache_dir'] = tmp_cache
         # Continue.
-        return project_config, user_config
+        return root_config, user_config
 
     def get_backends(self):
         backends = ProjectSetup.get_backends(self)
@@ -33,8 +33,8 @@ def get_setup():
 
 
 class MockBackend(Backend):
-    def __init__(self, project, config):
-        Backend.__init__(self, project, config)
+    def __init__(self, config, project):
+        Backend.__init__(self, config, project)
         self._dir = os.path.join(self.project.root, config['dir'])
         self._upload_dir = os.path.join(tmp_dir, 'upload')
 

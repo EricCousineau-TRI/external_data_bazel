@@ -3,25 +3,39 @@ import os
 from bazel_external_data import util, config_helpers
 
 SHA_SUFFIX = '.sha512'
+CONFIG_FILE_DEFAULT = ".bazel_external_data.yml"
+USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
+CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
+SENTINEL_DEFAULT = 'WORKSPACE'
 
 # TODO: Rename `Project` -> `Workspace`
 
+
 class Backend(object):
-    def __init__(self, project, config):
+    """ Downloads or uploads a file from a given storage mechanism given the SHA file.
+    This also has access to the project to determine project name, file relative paths
+    (if applicable), etc. """
+    def __init__(self, config, project):
         self.project = project
+        self.config = config
 
     def has_file(self, sha):
+        """ Determines if the storage mechanism has a given SHA. """
         raise NotImplemented()
 
     def download_file(self, sha, output_path):
+        """ Downloads a file from a given SHA to a given output path. """
         raise RuntimeError("Downloading not supported for this backend")
 
     def upload_file(self, sha, filepath):
+        """ Uploads a file from an output path given a SHA.
+        @note This SHA should be assumed to be valid. """
         raise RuntimeError("Uploading not supported for this backend")
 
 
 class Remote(object):
-    def __init__(self, package, name, config):
+    """ Provides a cache-friendly and hierarchy-friendly access to a given remote. """
+    def __init__(self, config, name, package):
         self.package = package
         self.config = config
         self.name = name
@@ -31,19 +45,22 @@ class Remote(object):
         overlay_name = config.get('overlay')
         self.overlay = None
         if overlay_name is not None:
-            self.overlay = self.package.get_remote(overlay_name)
+            self.overlay = self.package.load_remote(overlay_name)
 
     def has_overlay(self):
+        """ Returns whether this remote is overlaying another. """
         return self.overlay is not None
 
     def has_file(self, sha, check_overlay=True):
+        """ Returns whether this remote (or its overlay) has a given SHA. """
         if self._backend.has_file(sha):
             return True
         elif checkoverlay and self.has_overlay():
             return self.overlay.has_file(sha)
 
     def download_file_direct(self, sha, output_file):
-        # Calling components should ensure that this invariant is preserved.
+        """ Downloads a file directly and checks the SHA.
+        @pre `output_file` should not exist. """
         assert not os.path.exists(output_file)
         try:
             self._backend.download_file(sha, output_file)
@@ -57,6 +74,14 @@ class Remote(object):
 
     def download_file(self, sha, output_file,
                       use_cache = True, symlink_from_cache = True):
+        """ Downloads a file.
+        @param use_cache
+            Uses `project.user.cache_dir` as a cache. Normally, this is user-specified.
+        @param symlink_from_cache
+            If `use_cache` is true, this will place a symlink to the read-only
+            cache file at `output_file`.
+        """
+
         # Helper functions.
         def get_cached(skip_sha_check=False):
             # Can use cache. Copy to output path.
@@ -100,8 +125,9 @@ class Remote(object):
         else:
             self.download_file_direct(sha, output_file)
 
-
     def upload_file(self, filepath):
+        """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
+        and updates the corresponding SHA file. """
         sha = util.compute_sha(filepath)
         if self._backend.has_file(sha):
             print("File already uploaded")
@@ -111,32 +137,39 @@ class Remote(object):
 
 
 class Package(object):
+    """ Provides a hierarchy of remotes for incorporating data from multiple sources. """
     def __init__(self, config, project, parent):
         self._project = project
         self.parent = parent
         remote_name = config['remote']
 
-        self.config = config  # For debugging.
         self._remotes_config = config['remotes']
         self._remotes = {}
         self._remote_is_loading = []
 
-        self.remote = self.get_remote(remote_name)
+        self.config = config  # For debugging.
 
-    def has_remote(self, name):
+        # Get selected remote for this package.
+        self.remote = self.load_remote(remote_name)
+
+    def _has_remote(self, name):
         return name in self._remotes or name in self._remotes_config
 
     def load_backend(self, backend_type, config):
+        """ @see Project.load_backend """
         return self._project.load_backend(backend_type, config)
 
-    def get_remote(self, name):
+    def load_remote(self, name):
+        """ Load a remote for the given package. 
+        If the remote does not exist in the given package, the parent packages will be checked.
+        If ".." is specified, then the selected remote for the parent package will be returned. """
         if name == '..':
             assert self.parent, "Attempting to access parent remote at root package?"
             return self.parent.remote
-        if not self.has_remote(name):
+        if not self._has_remote(name):
             # Use parent if this package does not contain the desired remote.
             if self.parent:
-                self.parent.get_remote(name)
+                self.parent.load_remote(name)
             else:
                 raise RuntimeError("Unknown remote '{}'".format(name))
         # On-demand remote retrieval, with robustness against cycles.
@@ -147,56 +180,67 @@ class Package(object):
             if name in self._remote_is_loading:
                 raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
             self._remote_is_loading.append(name)
-            remote_node = self._remotes_config[name]
+            remote_config = self._remotes_config[name]
             # Load remote.
-            remote = Remote(self, name, remote_node)
+            remote = Remote(remote_config, name, self)
             # Update.
             self._remote_is_loading.remove(name)
             self._remotes[name] = remote
             return remote
 
     def get_sha_cache_path(self, sha, create_dir=False):
+        """ Get the cache path for a given SHA file for the given package.
+        Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
         a = sha[0:2]
         b = sha[2:4]
-        out_dir = os.path.join(self._project.core.cache_dir, a, b)
+        out_dir = os.path.join(self._project.user.cache_dir, a, b)
         if create_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir)
         return os.path.join(out_dir, sha)
 
 
-class Core(object):
+class User(object):
+    """ Stores user-level configuration (including backend-specifics, if needed). """
     def __init__(self, config):
-        self.cache_dir = os.path.expanduser(config['cache_dir'])
+        self.config = config
+        self.cache_dir = os.path.expanduser(config['core']['cache_dir'])
 
 
 class Project(object):
-    def __init__(self, config, user_config, setup):
+    """ Specifies a project's structure, caches packages (and remotes), and determines the mapping
+    between files and their packages / remotes (for download / uploading). """
+    def __init__(self, config, user, setup):
         self.config = config
-        self.user_config = user_config
+        self.user = user
         self.setup = setup
 
-        self.core = Core(user_config['core'])
-
-        sub_config = config['project']
-        self.name = sub_config['name']
-        self.root = sub_config['root']
-        self._root_alternatives = sub_config.get('root_alternatives', [])
-
         # Register backends.
-        self._backends = {}
-        self.register_backends(self.setup.get_backends())
+        self._backends = self.setup.get_backends()
 
-        # Create root package (parsing remotes).
+        # Load project-specific settings.
+        self.name = self.config['name']
+        self.root = self.config['root']
+        self._root_alternatives = self.config.get('root_alternatives', [])
+
+        # Set up for root package.
         self._packages = {}
-        self.root_package = Package(self.config['package'], self, None)
-        self._packages[sub_config['config_file']] = self.root_package
+        self.root_package = None
+
+    def init_root_package(self, package_config):
+        """ Initializes the root package for a project.
+        Must be called close to the project being initialized. """
+        assert self.root_package is None
+        self.root_package = Package(package_config, self, None)
+        config_file_rel = self.config.get('config_file', '<project>')
+        self._packages[config_file_rel] = self.root_package
 
     def debug_dump_user_config(self):
-        return self.user_config
+        """ Returns the user settings configuration. """
+        return self.user.config
 
     def debug_dump_config(self):
-        # Should return copy for const-ness.
+        """ Returns the project configuration. """
         return self.config
 
     def _get_remote_config_file(self, remote):
@@ -205,11 +249,10 @@ class Project(object):
         return package_file
 
     def debug_dump_remote(self, remote):
-        # For each remote, print its respective filepath.
+        """ For each remote, print its configuration, relative project path, and its overlays. """
         base = {}
         node = base
         while remote:
-            print(remote)
             config_file = self._get_remote_config_file(remote)
             config = {remote.name: remote.config}
             node.update(config_file=config_file, config=config)
@@ -223,7 +266,8 @@ class Project(object):
         return base
 
     def get_relpath(self, filepath):
-        # Get filepath relative to project root, using alternatives.
+        """ Get filepah relative to project root, using alternative roots if viable.
+        @note This should be used for reading operations only! """
         assert os.path.isabs(filepath)
         root_paths = [self.root] + self._root_alternatives
         # WARNING: This will not handle a nest root!
@@ -234,18 +278,18 @@ class Project(object):
         raise RuntimeError("Path is not a child of given project")
 
     def get_canonical_path(self, filepath):
-        """ Get filepath as an absolute path, ensuring that it is with respect to the canonical project root """
+        """ Get filepath as an absolute path, ensuring that it is with respect to the canonical project root.
+        @ note This should be reading operations only! """
         relpath = self.get_relpath(filepath)
         return os.path.join(self.root, relpath)
 
-    def register_backends(self, backends):
-        util.merge_unique(self._backends, backends)
-
     def load_backend(self, backend_type, config):
+        """ Load the backend of a given type. """
         backend_cls = self._backends[backend_type]
-        return backend_cls(self, config)
+        return backend_cls(config, self)
 
     def load_package(self, filepath):
+        """ Load the package for the given filepath. """
         config_files = self.setup.get_package_config_files(self, filepath)
         package = self.root_package
         for config_file in config_files:
@@ -265,6 +309,7 @@ class Project(object):
         return self.load_package(filepath).remote
 
     def load_remote_command_line(self, remote_config, start_dir=None):
+        """ Load a remote from the command-line (e.g. specifying a URL). """
         file_name = '<command_line>'
         remote_name = 'command_line'
         assert file_name not in self._packages
@@ -282,44 +327,64 @@ class Project(object):
         self._packages[file_name] = package
         return package.remote
 
+
 class ProjectSetup(object):
-    """ Extend this to change how configuration files are found for a project. """
+    """ Specifies how configuration is loaded for a project. """
     def __init__(self):
-        self.config_file_name = config_helpers.CONFIG_FILE_DEFAULT
-        self.sentinel = sentinel={'file': 'WORKSPACE'}
+        self.config_file_name = CONFIG_FILE_DEFAULT
+        self.sentinel = sentinel={'file': SENTINEL_DEFAULT}
         self.relpath = ''
 
     def load_config(self, guess_filepath):
+        """ Load the project and user configuration from a given filepath.
+        @param guess_filepath Initial guess at a filepath.
+        @return root_config (dict), user_config (dict)
+        """
         # Start guessing where the project lives.
         project_root, root_alternatives = config_helpers.find_project_root_bazel(guess_filepath, self.sentinel, self.relpath)
         # Load configuration.
         project_config_file = os.path.join(project_root, os.path.join(project_root, self.config_file_name))
-        project_config = config_helpers.parse_config_file(project_config_file)
+        root_config = config_helpers.parse_config_file(project_config_file)
         # Inject project information.
-        project_config['project']['root'] = project_root
-        project_config['project']['config_file'] = self.config_file_name  # Relative path.
+        root_config['project']['root'] = project_root
+        root_config['project']['config_file'] = self.config_file_name  # Relative path.
         if root_alternatives is not None:
             # Cache symlink root, and use this to get relative workspace path if the file is specified in
             # the symlink'd directory (e.g. Bazel runfiles).
-            project_config['project']['root_alternatives'] = root_alternatives
+            root_config['project']['root_alternatives'] = root_alternatives
         # Can augment `user_config` with project-specific settings, if needed.
-        user_config = config_helpers.parse_user_config()
-        return project_config, user_config
+        user_config_default = {
+            "core": {
+                "cache_dir": CACHE_DIR_DEFAULT,
+            },
+        }
+        user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT, user_config_default)
+        return root_config, user_config
 
     def get_backends(self):
+        """ Get backends specific to be used in this project setup. """
         from bazel_external_data.backends import get_default_backends
         return get_default_backends()
 
     def get_package_config_files(self, project, filepath_in):
+        """ Get all package's config files for a given filepath.
+        This permits specifying a hierarchy of packages. """
         filepath = project.get_canonical_path(filepath_in)
         start_dir = config_helpers.guess_start_dir(filepath)
         return config_helpers.find_package_config_files(project.root, start_dir, self.config_file_name)
 
 
 def load_project(guess_filepath):
-    # Use custom import to allow modular configuration.
-    # See 'test/bazel_external_data_config'
+    """ Load a project given the injected `bazel_external_data_config` module.
+    @param guess_filepath
+        Filepath where to start guessing where the project root is.
+    @return A `Project` instance.
+    @see test/bazel_external_data_config
+    """
     import bazel_external_data_config as custom
     setup = custom.get_setup()
-    project_config, user_config = setup.load_config(guess_filepath)
-    return Project(project_config, user_config, setup)
+    root_config, user_config = setup.load_config(guess_filepath)
+    user = User(user_config)
+    project = Project(root_config['project'], user, setup)
+    project.init_root_package(root_config['package'])
+    return project
