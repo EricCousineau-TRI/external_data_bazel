@@ -108,7 +108,7 @@ def find_file_sentinel(start_dir, sentinel_file, file_type='file', max_depth=6):
         cur_dir = os.path.dirname(cur_dir)
         if len(cur_dir) == 0:
             break
-    raise RuntimeError("Could not find project root")
+    raise RuntimeError("Could not find sentinel: {}".format(sentinel_file))
 
 
 def subshell(cmd, strip=True):

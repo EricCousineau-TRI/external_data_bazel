@@ -3,11 +3,18 @@ import yaml
 
 from bazel_external_data import util
 
-CONFIG_FILE = ".bazel_external_data.yml"
-USER_CONFIG = os.path.expanduser("~/.config/bazel_external_data/config.yml")
+CONFIG_FILE_DEFAULT = ".bazel_external_data.yml"
+USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
+CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
 
 # Helpers for configuration finding, specific to (a) general `bazel_external_data` configuration
 # and (b) Bazel path obfuscation reversal within `bazel_external_data`.
+
+def guess_start_dir(filepath):
+    if os.path.isdir(filepath):
+        return filepath
+    else:
+        return os.path.dirname(filepath)
 
 def guess_start_dir_bazel(guess_filepath, rel_path):
     # rel_path - Path of project root relative to Bazel workspace.
@@ -21,17 +28,11 @@ def guess_start_dir_bazel(guess_filepath, rel_path):
     else:
         return guess_start_dir
 
-def is_bazel_cache_dir(filepath):
+def _in_bazel_execroot(filepath):
     # WARNING: This won't apply if the user changes it...
     return '/.cache/bazel/' in filepath
 
-def guess_start_dir(filepath):
-    if os.path.isdir(filepath):
-        return filepath
-    else:
-        return os.path.dirname(filepath)
-
-def find_project_root(start_dir, sentinel, relpath):
+def find_project_root_bazel(guess_filepath, sentinel, relpath):
     # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
     # However, because Bazel does symlink magic that is not easily parseable,
     # we should not rely on something like `symlink -f ${file}`, because
@@ -42,6 +43,7 @@ def find_project_root(start_dir, sentinel, relpath):
     #  (1) Custom `.project-root` sentinel. Fine, but useful for accurate versioning,
     # which is the entire point of `.project-root`.
     #  (2) `.git` - What we really want, just need to make sure Git sees this.
+    start_dir = guess_start_dir_bazel(guess_filepath, relpath)
     root_file = util.find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
     root_alternatives = []
     if os.path.islink(root_file):
@@ -51,7 +53,7 @@ def find_project_root(start_dir, sentinel, relpath):
         assert os.path.isabs(root_file)
         if os.path.islink(root_file):
             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
-    elif relpath and is_bazel_cache_dir(root_file):
+    elif relpath and _in_bazel_execroot(root_file):
         # Check up according to the relative path.
         old_root_dir = os.path.dirname(root_file)
         pieces = relpath.split('/')
@@ -69,7 +71,10 @@ def find_project_root(start_dir, sentinel, relpath):
     root = os.path.dirname(root_file)
     return (root, root_alternatives)
 
-def find_package_config_files(project_root, start_dir, config_file = CONFIG_FILE):
+
+def find_package_config_files(project_root, start_dir, config_file):
+    """ Find all package config files for a given directory in a project.
+    This excludes the project-root config. """
     assert os.path.isabs(start_dir)
     assert os.path.isabs(project_root)
     assert util.is_child_path(start_dir, project_root)
@@ -81,20 +86,6 @@ def find_package_config_files(project_root, start_dir, config_file = CONFIG_FILE
             config_files.insert(0, test_path)
         cur_dir = os.path.dirname(cur_dir)
     return config_files
-
-
-def find_project_config_files(project_root, start_dir,
-                              config_file = CONFIG_FILE,
-                              optional_extras = [USER_CONFIG]):
-    config_paths = []
-    for extra in optional_extras:
-        if os.path.isfile(extra):
-            config_paths.append(extra)
-    # At project root, we *must* have a config file.
-    project_config_path = os.path.join(project_root, config_file)
-    assert os.path.isfile(project_config_path), "Must specify project config"
-    config_paths.append(project_config_path)
-    return config_paths
 
 
 def parse_config_file(config_file):
@@ -117,20 +108,14 @@ def _merge_config(base_config, new_config):
     return base_config
 
 
-def parse_and_merge_config_files(project_root, config_files):
-    # Define base-level configuration (for defaults and debugging).
+def parse_user_config(user_config_file = USER_CONFIG_FILE_DEFAULT):
     config = {
         "core": {
-            "cache_dir": "~/.cache/bazel_external_data",
-        },
-        "project": {
-            "root": project_root,
-            "config_files": config_files,
+            "cache_dir": CACHE_DIR_DEFAULT,
         },
     }
-    # Parse all config files.
-    for config_file in config_files:
-        new_config = parse_config_file(config_file)
-        # TODO(eric.cousineau): Add checks that we have desired keys, e.g. only one project name, etc.
+    if os.path.isfile(user_config_file):
+        new_config = parse_config_file(user_config_file)
         _merge_config(config, new_config)
+        config['config_file'] = user_config_file
     return config

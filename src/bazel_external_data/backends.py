@@ -27,7 +27,7 @@ class GirderBackend(Backend):
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config_node['folder_id']
         # Get (optional) authentication information.
-        url_config_node = get_chain(self.project.root_config, ['girder', 'url', url_full])
+        url_config_node = get_chain(self.project.user_config, ['girder', 'url', url_full])
         self._api_key = get_chain(url_config_node, ['api_key'])
         self._token = None
         self._girder_client = None
