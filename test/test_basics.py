@@ -18,11 +18,11 @@ expected_files = {
     ],
 }
 
-data_dir = 'test/data'
-mock_dir = 'test/mock'
+data_dir = 'data'
+mock_dir = 'mock'
 
 # Go through each file and ensure that we have the desired contents.
-files = subshell("find test/data -name '*.bin'")
+files = subshell("find data -name '*.bin'")
 for file in files.split('\n'):
     contents = open(file).read()
     file_name = os.path.basename(file)

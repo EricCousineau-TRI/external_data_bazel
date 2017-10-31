@@ -1,6 +1,6 @@
 workspace(name = "test")
 
 local_repository(
-    name = "bazel_external_data",
+    name = "external_data",  # Can't name it `external_data` due to Python package clashes???
     path = "..",
 )

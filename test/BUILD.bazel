@@ -8,10 +8,10 @@ py_test(
     name = "test_basics",
     srcs = ["test_basics.py"],
     deps = [
-        "@bazel_external_data//src/bazel_external_data:util",
+        "@external_data//src/bazel_external_data:util",
     ],
     data = [
-        "//test/data",
+        "//data",
         "mock",
     ],
     size = "small",
