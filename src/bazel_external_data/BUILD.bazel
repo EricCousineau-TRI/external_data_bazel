@@ -1,5 +1,5 @@
 py_library(
-    name = "util",
+    name = "base",
     srcs = [
         "backends.py",
         "config_helpers.py",
