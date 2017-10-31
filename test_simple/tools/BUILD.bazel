@@ -1,0 +1,28 @@
+py_library(
+    name = "base",
+    srcs = ["bazel_external_data_config.py"],
+    imports = ["."],
+    deps = [
+        "@org_drake_bazel_external_data//:base",
+    ],
+    data = [
+        "//:sentinel",
+    ],
+)
+
+py_binary(
+    name = "download",
+    srcs = ["@org_drake_bazel_external_data//:download.py"],
+    deps = [
+        ":base",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "upload",
+    srcs = ["@org_drake_bazel_external_data//:upload.py"],
+    deps = [
+        ":base",
+    ],
+)

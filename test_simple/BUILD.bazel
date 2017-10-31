@@ -1,0 +1,18 @@
+filegroup(
+    name = 'sentinel',
+    srcs = [':WORKSPACE'],
+    visibility=["//visibility:public"],
+)
+
+py_test(
+    name = "test_basics",
+    srcs = ["test_basics.py"],
+    deps = [
+        "@org_drake_bazel_external_data//:base",
+    ],
+    data = [
+        "//data",
+    ],
+    size = "small",
+    visibility = ["//visibility:public"],
+)
