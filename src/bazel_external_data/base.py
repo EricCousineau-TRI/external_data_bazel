@@ -335,7 +335,7 @@ class ProjectSetup(object):
     """ Specifies how configuration is loaded for a project. """
     def __init__(self):
         self.config_file_name = CONFIG_FILE_DEFAULT
-        self.sentinel = sentinel={'file': SENTINEL_DEFAULT}
+        self.sentinel = {'file': SENTINEL_DEFAULT}
         self.relpath = ''
 
     def load_config(self, guess_filepath):

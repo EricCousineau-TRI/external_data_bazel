@@ -1,4 +1,4 @@
-load("@external_data//tools:macros.bzl",
+load("@org_drake_bazel_external_data//tools:macros.bzl",
     "external_data_impl",
     "external_data_group_impl",
     "get_original_files"
