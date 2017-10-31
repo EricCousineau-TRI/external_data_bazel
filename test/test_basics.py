@@ -13,7 +13,7 @@ expected_files = {
     "backend_child": [
         "extra.bin",
     ],
-    None: [
+    "backend_url": [
         "direct.bin",
     ],
 }
@@ -26,12 +26,11 @@ files = subshell("find data -name '*.bin'")
 for file in files.split('\n'):
     contents = open(file).read()
     file_name = os.path.basename(file)
+
+    mock_contents = None
     for mock_name, mock_file_names in expected_files.iteritems():
         if file_name in mock_file_names:
-            if mock_name is not None:
-                mock_file = os.path.join(mock_dir, mock_name, file_name)
-                mock_contents = open(mock_file).read()
-            else:
-                mock_contents = "Content for '{}'\n".format(file_name)
+            mock_file = os.path.join(mock_dir, mock_name, file_name)
+            mock_contents = open(mock_file).read()
             break
     assert contents == mock_contents
