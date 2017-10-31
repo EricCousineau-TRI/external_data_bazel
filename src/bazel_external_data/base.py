@@ -8,9 +8,6 @@ USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/con
 CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
 SENTINEL_DEFAULT = 'WORKSPACE'
 
-# TODO: Rename `Project` -> `Workspace`
-
-
 class Backend(object):
     """ Downloads or uploads a file from a given storage mechanism given the SHA file.
     This also has access to the project to determine project name, file relative paths
@@ -251,7 +248,7 @@ class Project(object):
         assert package_file is not None
         return package_file
 
-    def debug_dump_remote(self, remote):
+    def debug_dump_remote_config(self, remote):
         """ For each remote, print its configuration, relative project path, and its overlays. """
         base = {}
         node = base
@@ -291,7 +288,7 @@ class Project(object):
         backend_cls = self._backends[backend_type]
         return backend_cls(config, self)
 
-    def load_package(self, filepath):
+    def _load_package(self, filepath):
         """ Load the package for the given filepath. """
         config_files = self.setup.get_package_config_files(self, filepath)
         package = self.root_package
@@ -309,17 +306,20 @@ class Project(object):
 
     def load_remote(self, filepath):
         """ Load remote for a given file to either fetch or push a file """
-        return self.load_package(filepath).remote
+        return self._load_package(filepath).remote
 
     def load_remote_command_line(self, remote_config, start_dir=None):
         """ Load a remote from the command-line (e.g. specifying a URL). """
+        # TODO(eric.cousineau): As an alternative, consider keeping file-specific items
+        # also in the configuration, akin to `.gitattributes` (possibly supporting fnmatch / globs).
+        # For now, that's redundant w.r.t. Bazel's abilities.
         file_name = '<command_line>'
         remote_name = 'command_line'
         assert file_name not in self._packages
         if start_dir is None:
             parent = self.root_package
         else:
-            parent = self.load_package(start_dir)
+            parent = self._load_package(start_dir)
         package_config = {
             'remote': remote_name,
             'remotes': {

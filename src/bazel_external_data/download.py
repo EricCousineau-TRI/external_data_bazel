@@ -11,14 +11,13 @@ import argparse
 
 from bazel_external_data import base, util
 
+SHA_SUFFIX = base.SHA_SUFFIX
+
 assert __name__ == '__main__'
 
-# TODO(eric.cousineau): Make a `--quick` option to ignore checking SHA-512s, if the files are really large.
+# TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
 parser = argparse.ArgumentParser()
-# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
-parser.add_argument('-o', '--output', dest='output_file', type=str,
-                    help='Output destination. If specified, only one input file may be provided.')
 parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-f', '--force', action='store_true',
@@ -40,12 +39,14 @@ parser.add_argument('--debug_user_config', action='store_true',
                     help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('--debug_remote_config', action='store_true',
                     help='Dump configuration for the remotes used for the each file.')
+
+# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
+parser.add_argument('-o', '--output', dest='output_file', type=str,
+                    help='Output destination. If specified, only one input file may be provided.')
 parser.add_argument('sha_files', type=str, nargs='+',
                     help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
 args = parser.parse_args()
-
-SHA_SUFFIX = base.SHA_SUFFIX
 
 def do_download(project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
@@ -74,7 +75,7 @@ def do_download(project, sha_file, output_file, remote_in=None):
     def dump_remote_config():
         dump = [{
             "file": project.get_relpath(sha_file),
-            "remote": project.debug_dump_remote(remote),
+            "remote": project.debug_dump_remote_config(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
 
