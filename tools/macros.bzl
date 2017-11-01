@@ -1,7 +1,6 @@
 SETTINGS_DEFAULT = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
-    DEBUG_CONFIG = False,
     CHECK_FILE = False,
 )
 
@@ -72,14 +71,14 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
-        if settings.DEBUG_CONFIG:
-            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
         if settings.CHECK_FILE:
             cmd += "--check_file=extra "
 
         if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
+            cmd += "--debug_cmdline "
+            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
 
         native.genrule(
             name = name,

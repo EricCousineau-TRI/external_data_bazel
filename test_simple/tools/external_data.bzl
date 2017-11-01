@@ -7,8 +7,7 @@ load("@org_drake_bazel_external_data//tools:macros.bzl",
 TOOL = "//tools:download"
 SETTINGS = struct(
     ENABLE_WARN = True,
-    VERBOSE = False,
-    DEBUG_CONFIG = False,
+    VERBOSE = True,
     CHECK_FILE = False,
 )
 

@@ -18,6 +18,12 @@ assert __name__ == '__main__'
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
 parser = argparse.ArgumentParser()
+# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
+parser.add_argument('-o', '--output', dest='output_file', type=str,
+                    help='Output destination. If specified, only one input file may be provided.')
+parser.add_argument('sha_files', type=str, nargs='+',
+                    help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
+
 parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-f', '--force', action='store_true',
@@ -41,12 +47,8 @@ parser.add_argument('--debug_user_config', action='store_true',
                     help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 parser.add_argument('--debug_remote_config', action='store_true',
                     help='Dump configuration for the remotes used for the each file.')
-
-# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
-parser.add_argument('-o', '--output', dest='output_file', type=str,
-                    help='Output destination. If specified, only one input file may be provided.')
-parser.add_argument('sha_files', type=str, nargs='+',
-                    help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
+parser.add_argument('--debug_cmdline', action='store_true',
+                    help='Dump command-line arguments.')
 
 args = parser.parse_args()
 
@@ -104,6 +106,12 @@ def do_download(project, sha_file, output_file, remote_in=None):
         sha, output_file,
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
+
+if args.debug_cmdline:
+    util.eprint("cmdline:")
+    util.eprint("  pwd: {}".format(os.getcwd()))
+    util.eprint("  argv[0]: {}".format(sys.argv[0]))
+    util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
 
 project = base.load_project(project_root_guess.parse_argument(args, args.sha_files))
 if args.debug_user_config:
