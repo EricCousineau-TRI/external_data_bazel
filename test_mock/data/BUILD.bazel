@@ -10,14 +10,6 @@ external_data(
     file = "basic.bin",
 )
 
-# @warning This will not be downloadable via the command-line if the cache has not yet been hit.
-# For --check_file={only,extra}, this would always file.
-# TODO(eric.cousineau): Address this, if needed.
-external_data(
-    file = "direct.bin",
-    url = "https://gist.githubusercontent.com/EricCousineau-TRI/0f331573f686b741f5f70de0f91a8cc1/raw/2eb960a76ec56f8a8a68cf5473d93d7edf75d5ad/direct.bin",  # noqa
-)
-
 external_data_group(
     name = "glob",
     files = get_original_files(glob(['glob_*.bin.sha512'])),
@@ -34,6 +26,14 @@ external_data(
 external_data_group(
     name = "package_overlay",
     files = get_original_files(glob(['package_overlay/*.bin.sha512'])),
+)
+
+# @warning This will not be downloadable via the command-line if the cache has not yet been hit.
+# For --check_file={only,extra}, this would always file.
+# TODO(eric.cousineau): Address this, if needed.
+external_data(
+    file = "direct.bin",
+    url = "https://gist.githubusercontent.com/EricCousineau-TRI/0f331573f686b741f5f70de0f91a8cc1/raw/2eb960a76ec56f8a8a68cf5473d93d7edf75d5ad/direct.bin",  # noqa
 )
 
 filegroup(

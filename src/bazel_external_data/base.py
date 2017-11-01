@@ -44,6 +44,8 @@ class Remote(object):
         backend_type = config['backend']
         self._backend = self.package.load_backend(backend_type, config)
 
+        self._check_always = config.get('check_always', False)
+
         overlay_name = config.get('overlay')
         self.overlay = None
         if overlay_name is not None:
@@ -120,7 +122,11 @@ class Remote(object):
 
         # Check if we need to download.
         if use_cache:
+            if self._check_always:
+                if not self.has_file(sha):
+                    raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, sha, output_file))
             cache_path = self.package.get_sha_cache_path(sha, create_dir=True)
+            # TODO(eric.cousineau): This still isn't atomic, and may encounter a race condition...
             util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
                 get_cached()
