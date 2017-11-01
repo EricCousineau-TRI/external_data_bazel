@@ -1,0 +1,15 @@
+workspace(name = "test_simple_downstream")
+
+load("//tools:path.bzl", "dirname")
+
+# <workspace_import name="test_simple">
+local_repository(
+    name = "org_drake_bazel_external_data",
+    path = dirname(__workspace_dir__),
+)
+# </workspace_import>  <!-- test_simple -->
+
+local_repository(
+    name = "test_simple",
+    path = dirname(__workspace_dir__) + "/test_simple",
+)
