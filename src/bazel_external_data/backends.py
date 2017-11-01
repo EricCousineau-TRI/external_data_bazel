@@ -67,7 +67,7 @@ def _has_file(self, url):
         raise RuntimeError("Unknown code: {}".format(first_line))
 
 
-def _download_file(self, url, output_file):
+def _download_file(url, output_file):
     util.curl('-L -o {output_file} {url}'.format(url=url, output_file=output_file))
 
 
