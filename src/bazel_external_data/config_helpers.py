@@ -1,5 +1,6 @@
 import os
 import yaml
+import copy
 
 from bazel_external_data import util
 
@@ -95,32 +96,33 @@ def find_package_config_files(project_root, start_dir, config_file):
     return config_files
 
 
-def _merge_config(base_config, new_config):
-    # Merge a configuration file.
-    for key, new_value in new_config.iteritems():
-        base_value = base_config.get(key)
-        if isinstance(base_value, dict):
-            assert isinstance(new_value, dict), "New value must be dict: {} - {}".format(key, new_value)
-            # Recurse.
-            value = _merge_config(base_value, new_value)
-        else:
-            # Overwrite.
-            value = new_value
-        base_config[key] = value
-    return base_config
-
-
-def parse_config_file(config_file, config_default = None, add_filepath = True):
+def parse_config_file(config_file, add_filepath = True):
     """ Parse a configuration file.
     @param add_filepath
         Adds `config_file` to the root level for debugging purposes. """
     with open(config_file) as f:
         config = yaml.load(f)
     if add_filepath:
-        config['config_file']  = config_file
-    if config_default is not None:
-        config_merged = dict(**config_default)
-        _merge_config(config_merged, config)
-        return config_merged
-    else:
-        return config
+        config['config_file'] = config_file
+    return config
+
+
+def merge_config(base_config, new_config, in_place = False):
+    if base_config is None:
+        return new_config
+    if not in_place:
+        base_config = copy.deepcopy(base_config)
+    if new_config is None:
+        return base_config
+    # Merge a configuration file.
+    for key, new_value in new_config.iteritems():
+        base_value = base_config.get(key)
+        if isinstance(base_value, dict):
+            assert isinstance(new_value, dict), "New value must be dict: {} - {}".format(key, new_value)
+            # Recurse.
+            value = merge_config(base_value, new_value, in_place=True)
+        else:
+            # Overwrite.
+            value = new_value
+        base_config[key] = value
+    return base_config

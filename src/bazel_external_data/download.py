@@ -31,6 +31,8 @@ parser.add_argument('-f', '--force', action='store_true',
 
 parser.add_argument('--project_root_guess', type=str, default='.',
                     help='File path to guess the project root.')
+parser.add_argument('--user_config', type=str, default=None,
+                    help='Override user configuration (useful for testing).')
 
 parser.add_argument('--no_cache', action='store_true',
                     help='Always download, and do not cache the result.')
@@ -109,8 +111,11 @@ def do_download(project, sha_file, output_file, remote_in=None):
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
 
+user_config = None
+if args.user_config is not None:
+    user_config = config_helpers.parse_config_file(args.user_config)
 
-project = base.load_project(os.path.abspath(args.project_root_guess))
+project = base.load_project(os.path.abspath(args.project_root_guess), user_config)
 if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)

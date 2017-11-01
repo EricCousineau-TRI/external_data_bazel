@@ -7,6 +7,11 @@ CONFIG_FILE_DEFAULT = ".bazel_external_data.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
 CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
 SENTINEL_DEFAULT = 'WORKSPACE'
+USER_CONFIG_DEFAULT = {
+    "core": {
+        "cache_dir": CACHE_DIR_DEFAULT,
+    },
+}
 
 class Backend(object):
     """ Downloads or uploads a file from a given storage mechanism given the SHA file.
@@ -350,18 +355,10 @@ class ProjectSetup(object):
         # Inject project information.
         root_config['project']['root'] = project_root
         root_config['project']['config_file'] = self.config_file_name  # Relative path.
-        if root_alternatives is not None:
-            # Cache symlink root, and use this to get relative workspace path if the file is specified in
-            # the symlink'd directory (e.g. Bazel runfiles).
-            root_config['project']['root_alternatives'] = root_alternatives
-        # Can augment `user_config` with project-specific settings, if needed.
-        user_config_default = {
-            "core": {
-                "cache_dir": CACHE_DIR_DEFAULT,
-            },
-        }
-        user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT, user_config_default)
-        return root_config, user_config
+        # Cache symlink root, and use this to get relative workspace path if the file is specified in
+        # the symlink'd directory (e.g. Bazel runfiles).
+        root_config['project']['root_alternatives'] = root_alternatives
+        return root_config
 
     def get_backends(self):
         """ Get backends specific to be used in this project setup. """
@@ -376,17 +373,24 @@ class ProjectSetup(object):
         return config_helpers.find_package_config_files(project.root, start_dir, self.config_file_name)
 
 
-def load_project(guess_filepath):
+def load_project(guess_filepath, user_config_in = None):
     """ Load a project given the injected `bazel_external_data_config` module.
     @param guess_filepath
         Filepath where to start guessing where the project root is.
     @return A `Project` instance.
     @see test/bazel_external_data_config
     """
+    if user_config_in is None:
+        # Can augment `user_config` with project-specific settings, if needed.
+        user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT)
+    else:
+        user_config = user_config_in
+    user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)
+    user = User(user_config)
+
     import bazel_external_data_config as custom
     setup = custom.get_setup()
-    root_config, user_config = setup.load_config(guess_filepath)
-    user = User(user_config)
+    root_config = setup.load_config(guess_filepath)
     project = Project(root_config['project'], user, setup)
     project.init_root_package(root_config['package'])
     return project

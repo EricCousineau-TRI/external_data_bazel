@@ -2,6 +2,7 @@ SETTINGS_DEFAULT = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
     CHECK_FILE = False,
+    EXTRA_ARGS = "",
 )
 
 SHA_SUFFIX = ".sha512"
@@ -52,7 +53,8 @@ def add_external_data_tools(sentinel = "//:sentinel", prefix = ""):
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None, settings=SETTINGS_DEFAULT):
+def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None, settings=SETTINGS_DEFAULT,
+                       data = []):
     """
     Macro for defining a large file.
 
@@ -121,6 +123,8 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         cmd += "--output $@ "
         if settings.CHECK_FILE:
             cmd += "--check_file=extra "
+        if getattr(settings, 'EXTRA_ARGS'):
+            cmd += settings.EXTRA_ARGS + " "
 
         if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
@@ -128,7 +132,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
 
         native.genrule(
             name = name,
-            srcs = [sha_file],
+            srcs = [sha_file] + data,
             outs = [file],
             cmd = cmd,
             tools = [tool],
@@ -142,13 +146,14 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None, settings=SETTINGS_DEFAULT):
+def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None, settings=SETTINGS_DEFAULT,
+                             data = []):
     """ @see external_data """
 
     if settings.ENABLE_WARN and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
-    kwargs = {'tool': tool, 'visibility': visibility, 'settings': settings}
+    kwargs = {'tool': tool, 'visibility': visibility, 'settings': settings, 'data': data}
 
     for file in files:
         if file not in files_devel:

@@ -10,6 +10,7 @@ SETTINGS = struct(
     VERBOSE = False,
     DEBUG_CONFIG = False,
     CHECK_FILE = False,
+    EXTRA_ARGS = "--user_config=$(location //tools:bazel_external_data.user.yml)",
 )
 
 def external_data(*args, **kwargs):
@@ -17,6 +18,7 @@ def external_data(*args, **kwargs):
         *args,
         tool = TOOL,
         settings = SETTINGS,
+        data = ['//tools:bazel_external_data.user.yml'],
         **kwargs
     )
 
@@ -25,5 +27,6 @@ def external_data_group(*args, **kwargs):
         *args,
         tool = TOOL,
         settings = SETTINGS,
+        data = ['//tools:bazel_external_data.user.yml'],
         **kwargs
     )

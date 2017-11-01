@@ -1,6 +1,8 @@
 filegroup(
     name = 'sentinel',
-    srcs = [':.custom-sentinel'],
+    srcs = [
+        ':.custom-sentinel',
+    ],
     visibility=["//visibility:public"],
 )
 
