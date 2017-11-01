@@ -64,6 +64,8 @@ class Remote(object):
             util.check_sha(sha, output_file)
         except util.DownloadError as e:
             if self.has_overlay():
+                # TODO(eric.cousineau): If hierarchical caching is used (for whatever reason), this
+                # would be an invalid operation.
                 self.overlay.download_file_direct(sha, output_file)
             else:
                 # Rethrow
@@ -167,11 +169,8 @@ class Package(object):
             assert self.parent, "Attempting to access parent remote at root package?"
             return self.parent.remote
         if not self._has_remote(name):
-            # Use parent if this package does not contain the desired remote.
-            if self.parent:
-                self.parent.load_remote(name)
-            else:
-                raise RuntimeError("Unknown remote '{}'".format(name))
+            # Do NOT allow access to parent package remotes for now.
+            raise RuntimeError("Unknown remote '{}'".format(name))
         # On-demand remote retrieval, with robustness against cycles.
         if name in self._remotes:
             return self._remotes[name]
