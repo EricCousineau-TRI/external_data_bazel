@@ -1,7 +1,7 @@
 filegroup(
     name = 'sentinel',
     srcs = [
-        ':.custom-sentinel',
+        ':.external_data.project.yml',
     ],
     visibility=["//visibility:public"],
 )

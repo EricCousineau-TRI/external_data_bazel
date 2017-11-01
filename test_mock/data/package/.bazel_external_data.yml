@@ -1,8 +1,0 @@
-package:
-    remote: test_child
-
-    remotes:
-        test_child:
-            backend: mock
-            dir: mock/backend_child
-            upload_dir: /tmp/bazel_external_data/upload

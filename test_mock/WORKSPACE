@@ -1,4 +1,4 @@
-workspace(name = "test")
+workspace(name = "test_mock")
 
 load("//tools:path.bzl", "dirname")
 

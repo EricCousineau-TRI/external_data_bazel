@@ -123,8 +123,9 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         cmd += "--output $@ "
         if settings.CHECK_FILE:
             cmd += "--check_file=extra "
-        if getattr(settings, 'EXTRA_ARGS'):
-            cmd += settings.EXTRA_ARGS + " "
+        extra_args = getattr(settings, 'EXTRA_ARGS', None)
+        if extra_args:
+            cmd += extra_args + " "
 
         if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +

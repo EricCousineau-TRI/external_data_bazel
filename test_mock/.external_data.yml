@@ -1,0 +1,7 @@
+remote: master
+
+remotes:
+    master:
+        backend: mock
+        dir: mock/backend_root
+        upload_dir: /tmp/bazel_external_data/upload

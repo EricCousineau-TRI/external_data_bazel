@@ -93,6 +93,10 @@ def find_package_config_files(project_root, start_dir, config_file):
         if os.path.isfile(test_path):
             config_files.insert(0, test_path)
         cur_dir = os.path.dirname(cur_dir)
+    # Add project root package.
+    test_path = os.path.join(cur_dir, config_file)
+    assert os.path.isfile(test_path)
+    config_files.insert(0, test_path)
     return config_files
 
 

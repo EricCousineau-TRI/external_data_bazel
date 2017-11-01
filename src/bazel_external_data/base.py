@@ -3,7 +3,8 @@ import os
 from bazel_external_data import util, config_helpers
 
 SHA_SUFFIX = '.sha512'
-CONFIG_FILE_DEFAULT = ".bazel_external_data.yml"
+PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
+PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
 CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
 SENTINEL_DEFAULT = 'WORKSPACE'
@@ -242,7 +243,7 @@ class Project(object):
         Must be called close to the project being initialized. """
         assert self.root_package is None
         self.root_package = Package(package_config, self, None)
-        config_file_rel = self.config.get('config_file', '<project>')
+        config_file_rel = self.get_relpath(package_config['config_file'])
         self._packages[config_file_rel] = self.root_package
 
     def debug_dump_user_config(self):
@@ -301,7 +302,7 @@ class Project(object):
     def _load_package(self, filepath):
         """ Load the package for the given filepath. """
         config_files = self.setup.get_package_config_files(self, filepath)
-        package = self.root_package
+        package = None
         for config_file in config_files:
             config_file_rel = self.get_relpath(config_file)
             parent = package
@@ -310,7 +311,7 @@ class Project(object):
                 # Parse the package config file.
                 config = config_helpers.parse_config_file(config_file)
                 # Load package.
-                package = Package(config['package'], self, parent)
+                package = Package(config, self, parent)
                 self._packages[config_file_rel] = package
         return package
 
@@ -344,27 +345,25 @@ class Project(object):
 class ProjectSetup(object):
     """ Specifies how configuration is loaded for a project. """
     def __init__(self):
-        self.config_file_name = CONFIG_FILE_DEFAULT
         self.sentinel = {'file': SENTINEL_DEFAULT}
         self.relpath = ''
 
     def load_config(self, guess_filepath):
-        """ Load the project and user configuration from a given filepath.
-        @param guess_filepath Initial guess at a filepath.
-        @return root_config (dict), user_config (dict)
+        """ Load the project user configuration from a filepath to guess to find the project root.
+        @param guess_filepath Initial guess at the project root.
+        @return project_config
         """
         # Start guessing where the project lives.
         project_root, root_alternatives = config_helpers.find_project_root_bazel(guess_filepath, self.sentinel, self.relpath)
         # Load configuration.
-        project_config_file = os.path.join(project_root, os.path.join(project_root, self.config_file_name))
-        root_config = config_helpers.parse_config_file(project_config_file)
+        project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE_DEFAULT))
+        project_config = config_helpers.parse_config_file(project_config_file)
         # Inject project information.
-        root_config['project']['root'] = project_root
-        root_config['project']['config_file'] = self.config_file_name  # Relative path.
+        project_config['root'] = project_root
         # Cache symlink root, and use this to get relative workspace path if the file is specified in
         # the symlink'd directory (e.g. Bazel runfiles).
-        root_config['project']['root_alternatives'] = root_alternatives
-        return root_config
+        project_config['root_alternatives'] = root_alternatives
+        return project_config
 
     def get_backends(self):
         """ Get backends specific to be used in this project setup. """
@@ -376,7 +375,7 @@ class ProjectSetup(object):
         This permits specifying a hierarchy of packages. """
         filepath = project.get_canonical_path(filepath_in)
         start_dir = config_helpers.guess_start_dir(filepath)
-        return config_helpers.find_package_config_files(project.root, start_dir, self.config_file_name)
+        return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE_DEFAULT)
 
 
 def load_project(guess_filepath, user_config_in = None):
@@ -396,7 +395,8 @@ def load_project(guess_filepath, user_config_in = None):
 
     import bazel_external_data_config as custom
     setup = custom.get_setup()
-    root_config = setup.load_config(guess_filepath)
-    project = Project(root_config['project'], user, setup)
-    project.init_root_package(root_config['package'])
+    project_config = setup.load_config(guess_filepath)
+    project = Project(project_config, user, setup)
+    root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE_DEFAULT))
+    project.init_root_package(root_package_config)
     return project
