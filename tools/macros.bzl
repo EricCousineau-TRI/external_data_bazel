@@ -114,7 +114,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         # Argument: Specific URL.
         if url:
             # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
-            cmd += "--remote='{{backend: direct, url: \"{}\"}}' ".format(url)
+            cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
