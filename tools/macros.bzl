@@ -6,6 +6,47 @@ SETTINGS_DEFAULT = struct(
 
 SHA_SUFFIX = ".sha512"
 
+
+def add_external_data_tools(sentinel = "//:sentinel", prefix = ""):
+    """
+    Macro for defining external data tools.
+
+    @param sentinel
+        The file used to determine the project root from Bazel's execroot.
+    @param prefix
+        Normally, this macro produces "base" (py_library), "download" (py_binary), and
+        "upload" (py_binary). This argument prefixes these target names.
+    """
+    base_name = prefix + "base"
+    native.py_library(
+        name = base_name,
+        srcs = ["bazel_external_data_config.py"],
+        imports = ["."],
+        deps = [
+            "@org_drake_bazel_external_data//:base",
+        ],
+        data = [
+            sentinel,
+        ],
+    )
+
+    native.py_binary(
+        name = prefix + "download",
+        srcs = ["@org_drake_bazel_external_data//:download.py"],
+        deps = [
+            ":" + base_name,
+        ],
+        visibility = ["//visibility:public"],
+    )
+
+    native.py_binary(
+        name = "upload",
+        srcs = ["@org_drake_bazel_external_data//:upload.py"],
+        deps = [
+            ":" + base_name,
+        ],
+    )
+
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
 # Downstream projects can call these as implementation methods, so that way they can fold
