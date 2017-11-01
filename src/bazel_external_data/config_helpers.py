@@ -124,3 +124,24 @@ def parse_config_file(config_file, config_default = None, add_filepath = True):
         return config_merged
     else:
         return config
+
+
+class ProjectRootGuess(object):
+    """ Used for interpreting a user's guess for the project's initial filepath.
+    This is used for consuming a project as a Bazel external, and leveraging its
+    external file. """
+    def add_argument(self, parser):
+        parser.add_argument(
+            '--project_root_guess', type=str, default='<first_file>',
+            help='Guess to determine the project root.\n' +
+                 '  "<first_file>" - First file input on the command-line.\n' +
+                 '  otherwise - Any path, e.g. "." for PWD, or anything else.')
+
+    def parse_argument(self, args, input_files):
+        arg = args.project_root_guess
+        if arg == "<first_file>":
+            assert len(input_files) > 0
+            p = input_files[0]
+        else:
+            p = arg
+        return os.path.abspath(p)
