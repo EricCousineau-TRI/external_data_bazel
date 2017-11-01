@@ -168,7 +168,7 @@ def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=
         if file not in files:
             devel_only.append(file)
             external_data_impl(file, "devel", **kwargs)
-    if devel_only:
+    if settings.ENABLE_WARN and devel_only:
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +
               "  If you remove `files_devel`, then these files will not be part of the target.\n" +
