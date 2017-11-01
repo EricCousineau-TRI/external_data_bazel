@@ -4,54 +4,128 @@ import os
 from bazel_external_data import util
 from bazel_external_data.base import Backend
 
-# TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
-# dependency.
-# If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
+# TODO(eric.cousineau): Consider implementing LFS protocol?
+
+def get_default_backends():
+    return {
+        "mock": MockBackend,
+        "url": UrlBackend,
+        "url_templates": UrlTemplatesBackend,
+        "girder": GirderBackend,
+    }
 
 
-class DirectBackend(Backend):
-    """ For direct file downloads. """
+class MockBackend(Backend):
+    def __init__(self, config, project):
+        Backend.__init__(self, config, project)
+        self._dir = os.path.join(self.project.root, config['dir'])
+        # TODO(eric.cousineau): Enable ${PWD} for testing?
+        self._upload_dir = os.path.join(self.project.root, config['upload_dir'])
+
+        # Crawl through files and compute SHAs.
+        self._map = {}
+        def crawl(cur_dir):
+            for file in os.listdir(cur_dir):
+                filepath = os.path.join(cur_dir, file)
+                if os.path.isfile(filepath):
+                    sha = util.compute_sha(filepath)
+                    self._map[sha] = filepath
+        crawl(self._dir)
+        if os.path.exists(self._upload_dir):
+            crawl(self._upload_dir)
+
+    def has_file(self, sha):
+        return sha in self._map
+
+    def download_file(self, sha, output_file):
+        filepath = self._map.get(sha)
+        if filepath is None:
+            raise util.DownloadError("Unknown sha: {}".format(sha))
+        util.subshell(['cp', filepath, output_file])
+
+    def upload_file(self, sha, filepath):
+        sha = util.compute_sha(filepath)
+        assert sha not in self._map
+        if not os.path.isdir(self._upload_dir):
+            os.makedirs(self._upload_dir)
+        # Copy the file.
+        dest = os.path.join(self._upload_dir, sha)
+        util.subshell(['cp', filepath, dest])
+        # Store the SHA.
+        self._map[sha] = dest
+
+
+def _has_file(self, url):
+    first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
+    bad = ["HTTP/1.1 404 Not Found"]
+    good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
+    if first_line in bad:
+        return False
+    elif first_line in good:
+        return True
+    else:
+        raise RuntimeError("Unknown code: {}".format(first_line))
+
+
+def _download_file(self, url, output_file):
+    util.curl('-L -o {output_file} {url}'.format(url=url, output_file=output_file))
+
+
+class UrlBackend(Backend):
+    """ For direct URLs. """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
         self._url = config['url']
 
     def has_file(self, sha):
-        first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=self._url))
-        bad = ["HTTP/1.1 404 Not Found"]
-        good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
-        if first_line in bad:
-            return False
-        elif first_line in good:
-            return True
-        else:
-            raise RuntimeError("Unknown code: {}".format(first_line))
+        return _has_file(self._url)
 
     def download_file(self, sha, output_file):
         # Ignore the SHA. Just download. Everything else will validate.
-        util.curl('-L -o {output_file} {url}'.format(url=self._url, output_file=output_file))
+        _download_file(self._url, output_file)
 
 
-def _reduce_url(url_full):
-    begin = '['
-    end = '] '
-    if url_full.startswith(begin):
-        # Scan until we find '] '
-        fin = url_full.index(end)
-        url = url_full[fin + len(end):]
-    else:
-        url = url_full
-    return url
-
-class GirderBackend(Backend):
+class UrlTemplatesBackend(Backend):
+    """ For formatted or direct URL downloads.
+    This supports CMake/ExternalData-like URL templates, but using Python formatting '{algo}' and '{hash}'
+    rather than '%(algo)' and '%(hash)'.
+    """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
+        self._urls = config['url_templates']
 
-        url_full = config['url']
-        self._url = _reduce_url(url_full)
+    def _format(self, url, sha):
+        return url.format(hash=sha, algo='sha512')
+
+    def has_file(self, sha):
+        for url in self._urls:
+            if _has_file(self._format(url, sha)):
+                return True
+        return False
+
+    def download_file(self, sha, output_file):
+        for url in self._urls:
+            try:
+                _download_file(self._format(url, sha))
+                return
+            except util.DownloadError:
+                pass
+        algo = 'sha512'
+        raise util.DownloadError("Could not download {}:{} from:\n{}".format(algo, sha, "\n".join(self._urls)))
+
+# TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
+# dependency.
+# If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
+
+class GirderBackend(Backend):
+    """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
+    def __init__(self, config, project):
+        Backend.__init__(self, config, project)
+        self._url = config['url']
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config['folder_id']
         # Get (optional) authentication information.
-        url_config_node = get_chain(self.project.user.config, ['girder', 'url', url_full])
+        url_config_node = get_chain(self.project.user.config, ['girder', 'url', self._url])
         self._api_key = get_chain(url_config_node, ['api_key'])
         self._token = None
         self._girder_client = None
@@ -121,10 +195,3 @@ class GirderBackend(Backend):
         with open(filepath, 'rb') as fd:
             print("Uploading: {}".format(filepath))
             gc.uploadFile(self._folder_id, fd, name=item_name, size=size, parentType='folder', reference=ref)
-
-
-def get_default_backends():
-    return {
-        "direct": DirectBackend,
-        "girder": GirderBackend,
-    }

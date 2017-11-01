@@ -1,0 +1,12 @@
+# Project configuration.
+project:
+    name: test_simple
+
+package:
+    remote: master
+
+    remotes:
+        master:
+            # Only valid for this single test file.
+            backend: url
+            url: https://gist.githubusercontent.com/EricCousineau-TRI/0f331573f686b741f5f70de0f91a8cc1/raw/2eb960a76ec56f8a8a68cf5473d93d7edf75d5ad/direct.bin

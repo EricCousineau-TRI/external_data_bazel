@@ -1,14 +1,13 @@
-load("//tools:macros.bzl",
-    "external_data_impl",
-    "external_data_group_impl",
-    "get_original_files"
+load("@org_drake_bazel_external_data//tools:macros.bzl",
+    "external_data_impl",  # Do NOT use externally.
+    "external_data_group_impl",  # Do NOT use externally.
+    "get_original_files"  # Pass through.
 )
 
-TOOL = "//test/tools:download"
+TOOL = "//tools:download"
 SETTINGS = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
-    DEBUG_CONFIG = False,
     CHECK_FILE = False,
 )
 

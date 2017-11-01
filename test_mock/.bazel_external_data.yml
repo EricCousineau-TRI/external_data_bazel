@@ -1,6 +1,6 @@
 # Project configuration.
 project:
-    name: test
+    name: test_mock
 
 package:
     remote: master
@@ -9,3 +9,4 @@ package:
         master:
             backend: mock
             dir: mock/backend_root
+            upload_dir: /tmp/bazel_external_data/upload

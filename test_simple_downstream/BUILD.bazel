@@ -1,0 +1,9 @@
+py_test(
+    name = "test_basics",
+    srcs = ["test_basics.py"],
+    data = [
+        "@test_simple//data",
+    ],
+    size = "small",
+    visibility = ["//visibility:public"],
+)

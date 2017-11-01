@@ -1,0 +1,8 @@
+workspace(name = "test_simple")
+
+load("//tools:path.bzl", "dirname")
+
+local_repository(
+    name = "org_drake_bazel_external_data",
+    path = dirname(__workspace_dir__),
+)

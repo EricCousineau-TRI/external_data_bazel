@@ -1,0 +1,5 @@
+load("@org_drake_bazel_external_data//tools:macros.bzl",
+    "add_external_data_tools",
+)
+
+add_external_data_tools()

@@ -9,20 +9,29 @@ import os
 import yaml
 import argparse
 
-from bazel_external_data import base, util
+from bazel_external_data import base, util, config_helpers
+
+SHA_SUFFIX = base.SHA_SUFFIX
 
 assert __name__ == '__main__'
 
-# TODO(eric.cousineau): Make a `--quick` option to ignore checking SHA-512s, if the files are really large.
+# TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
 parser = argparse.ArgumentParser()
 # TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
 parser.add_argument('-o', '--output', dest='output_file', type=str,
                     help='Output destination. If specified, only one input file may be provided.')
+parser.add_argument('sha_files', type=str, nargs='+',
+                    help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
+
 parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-f', '--force', action='store_true',
                     help='Overwrite existing output file.')
+
+parser.add_argument('--project_root_guess', type=str, default='.',
+                    help='File path to guess the project root.')
+
 parser.add_argument('--no_cache', action='store_true',
                     help='Always download, and do not cache the result.')
 parser.add_argument('--symlink_from_cache', action='store_true',
@@ -34,18 +43,16 @@ parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='
                          + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
-parser.add_argument('--debug_project_config', action='store_true',
-                    help='Dump configuration output for the project.')
-parser.add_argument('--debug_user_config', action='store_true',
-                    help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--debug_remote_config', action='store_true',
-                    help='Dump configuration for the remotes used for the each file.')
-parser.add_argument('sha_files', type=str, nargs='+',
-                    help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
+parser.add_argument('-v', '--verbose', action='store_true',
+                    help='Dump configuration and show command-line arguments. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 
 args = parser.parse_args()
 
-SHA_SUFFIX = base.SHA_SUFFIX
+if args.verbose:
+    util.eprint("cmdline:")
+    util.eprint("  pwd: {}".format(os.getcwd()))
+    util.eprint("  argv[0]: {}".format(sys.argv[0]))
+    util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
 
 def do_download(project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
@@ -74,16 +81,16 @@ def do_download(project, sha_file, output_file, remote_in=None):
     def dump_remote_config():
         dump = [{
             "file": project.get_relpath(sha_file),
-            "remote": project.debug_dump_remote(remote),
+            "remote": project.debug_dump_remote_config(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
 
-    if args.debug_remote_config:
+    if args.verbose:
         dump_remote_config()
 
     if args.check_file != 'none':
         if not remote.has_file(sha):
-            if not args.debug_remote_config:
+            if not args.verbose:
                 dump_remote_config()
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
         if args.check_file == 'only':
@@ -102,10 +109,10 @@ def do_download(project, sha_file, output_file, remote_in=None):
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
 
-project = base.load_project(os.getcwd())
-if args.debug_user_config:
+
+project = base.load_project(os.path.abspath(args.project_root_guess))
+if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
-if args.debug_project_config:
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
 remote_in = None

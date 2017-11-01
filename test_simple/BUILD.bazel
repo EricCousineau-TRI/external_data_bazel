@@ -1,0 +1,15 @@
+filegroup(
+    name = 'sentinel',
+    srcs = [':WORKSPACE'],
+    visibility=["//visibility:public"],
+)
+
+py_test(
+    name = "test_basics",
+    srcs = ["test_basics.py"],
+    data = [
+        "//data",
+    ],
+    size = "small",
+    visibility = ["//visibility:public"],
+)

@@ -6,3 +6,4 @@ package:
             overlay: ..
             backend: mock
             dir: mock/backend_child
+            upload_dir: /tmp/bazel_external_data/upload

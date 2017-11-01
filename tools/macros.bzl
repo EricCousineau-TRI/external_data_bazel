@@ -1,11 +1,51 @@
 SETTINGS_DEFAULT = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
-    DEBUG_CONFIG = False,
     CHECK_FILE = False,
 )
 
 SHA_SUFFIX = ".sha512"
+
+
+def add_external_data_tools(sentinel = "//:sentinel", prefix = ""):
+    """
+    Macro for defining external data tools.
+
+    @param sentinel
+        The file used to determine the project root from Bazel's execroot.
+    @param prefix
+        Normally, this macro produces "base" (py_library), "download" (py_binary), and
+        "upload" (py_binary). This argument prefixes these target names.
+    """
+    base_name = prefix + "base"
+    native.py_library(
+        name = base_name,
+        srcs = ["bazel_external_data_config.py"],
+        imports = ["."],
+        deps = [
+            "@org_drake_bazel_external_data//:base",
+        ],
+        data = [
+            sentinel,
+        ],
+    )
+
+    native.py_binary(
+        name = prefix + "download",
+        srcs = ["@org_drake_bazel_external_data//:download.py"],
+        deps = [
+            ":" + base_name,
+        ],
+        visibility = ["//visibility:public"],
+    )
+
+    native.py_binary(
+        name = "upload",
+        srcs = ["@org_drake_bazel_external_data//:upload.py"],
+        deps = [
+            ":" + base_name,
+        ],
+    )
 
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
@@ -54,6 +94,12 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
 
         # Binary:
         cmd = "$(location {}) ".format(tool)
+        # Argument: Verbosity.
+        if settings.VERBOSE:
+            cmd += "--verbose "
+        # Argument: Project root. Guess from the input file rather than PWD, so that a file could
+        # consumed by a downstream Bazel project.
+        cmd += "--project_root_guess=$(location {}) ".format(sha_file)
         # Argument: Ensure that we can permit relative paths.
         cmd += "--allow_relpath "
         # Argument: Caching.
@@ -67,13 +113,12 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             cmd += "--symlink_from_cache "
         # Argument: Specific URL.
         if url:
-            cmd += "--remote='{{backend: direct, url: \"{}\"}}' ".format(url)
+            # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
+            cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
-        if settings.DEBUG_CONFIG:
-            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
         if settings.CHECK_FILE:
             cmd += "--check_file=extra "
 
