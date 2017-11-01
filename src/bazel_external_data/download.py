@@ -41,16 +41,16 @@ parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='
                          + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 parser.add_argument('--remote', type=str, default=None,
                     help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
-parser.add_argument('--debug_project_config', action='store_true',
-                    help='Dump configuration output for the project.')
-parser.add_argument('--debug_user_config', action='store_true',
-                    help='Dump configuration output for user configuration files. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--debug_remote_config', action='store_true',
-                    help='Dump configuration for the remotes used for the each file.')
-parser.add_argument('--debug_cmdline', action='store_true',
-                    help='Dump command-line arguments.')
+parser.add_argument('-v', '--verbose', action='store_true',
+                    help='Dump configuration and show command-line arguments. WARNING: Will print out information in user configuration (e.g. keys) as well!')
 
 args = parser.parse_args()
+
+if args.verbose:
+    util.eprint("cmdline:")
+    util.eprint("  pwd: {}".format(os.getcwd()))
+    util.eprint("  argv[0]: {}".format(sys.argv[0]))
+    util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
 
 def do_download(project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
@@ -83,12 +83,12 @@ def do_download(project, sha_file, output_file, remote_in=None):
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
 
-    if args.debug_remote_config:
+    if args.verbose:
         dump_remote_config()
 
     if args.check_file != 'none':
         if not remote.has_file(sha):
-            if not args.debug_remote_config:
+            if not args.verbose:
                 dump_remote_config()
             raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
         if args.check_file == 'only':
@@ -107,16 +107,9 @@ def do_download(project, sha_file, output_file, remote_in=None):
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
 
-if args.debug_cmdline:
-    util.eprint("cmdline:")
-    util.eprint("  pwd: {}".format(os.getcwd()))
-    util.eprint("  argv[0]: {}".format(sys.argv[0]))
-    util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
-
 project = base.load_project(project_root_guess.parse_argument(args, args.sha_files))
-if args.debug_user_config:
+if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
-if args.debug_project_config:
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
 remote_in = None

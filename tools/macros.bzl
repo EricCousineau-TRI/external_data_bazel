@@ -53,6 +53,9 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
 
         # Binary:
         cmd = "$(location {}) ".format(tool)
+        # Argument: Verbosity.
+        if settings.VERBOSE:
+            cmd += "--verbose "
         # Argument: Ensure that we can permit relative paths.
         cmd += "--allow_relpath "
         # Argument: Caching.
@@ -66,6 +69,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             cmd += "--symlink_from_cache "
         # Argument: Specific URL.
         if url:
+            # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
             cmd += "--remote='{{backend: direct, url: \"{}\"}}' ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
@@ -77,8 +81,6 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
-            cmd += "--debug_cmdline "
-            cmd += "--debug_user_config --debug_project_config --debug_remote_config "
 
         native.genrule(
             name = name,
