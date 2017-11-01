@@ -1,7 +1,7 @@
 load("@org_drake_bazel_external_data//tools:macros.bzl",
-    "external_data_impl",
-    "external_data_group_impl",
-    "get_original_files"
+    "external_data_impl",  # Do NOT use externally.
+    "external_data_group_impl",  # Do NOT use externally.
+    "get_original_files"  # Pass through.
 )
 
 TOOL = "//tools:download"

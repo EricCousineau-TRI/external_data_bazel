@@ -28,8 +28,10 @@ parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-f', '--force', action='store_true',
                     help='Overwrite existing output file.')
-project_root_guess = config_helpers.ProjectRootGuess()
-project_root_guess.add_argument(parser)
+
+parser.add_argument('--project_root_guess', type=str, default='.',
+                    help='File path to guess the project root.')
+
 parser.add_argument('--no_cache', action='store_true',
                     help='Always download, and do not cache the result.')
 parser.add_argument('--symlink_from_cache', action='store_true',
@@ -107,7 +109,8 @@ def do_download(project, sha_file, output_file, remote_in=None):
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
 
-project = base.load_project(project_root_guess.parse_argument(args, args.sha_files))
+
+project = base.load_project(os.path.abspath(args.project_root_guess))
 if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)

@@ -8,18 +8,21 @@ _bazel() {
 # Run basic interface tests
 (
     cd test_simple
+    _bazel clean
     _bazel test //...
 )
 
 # Run downstream consumption example
 (
     cd test_simple_downstream
+    _bazel clean
     _bazel test //...
 )
 
 # Run more advanced mock storage tests
 (
     cd test_mock
+    _bazel clean
     _bazel test //...
 )
 

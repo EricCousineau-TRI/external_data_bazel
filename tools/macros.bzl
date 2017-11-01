@@ -97,6 +97,9 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
         # Argument: Verbosity.
         if settings.VERBOSE:
             cmd += "--verbose "
+        # Argument: Project root. Guess from the input file rather than PWD, so that a file could
+        # consumed by a downstream Bazel project.
+        cmd += "--project_root_guess=$(location {}) ".format(sha_file)
         # Argument: Ensure that we can permit relative paths.
         cmd += "--allow_relpath "
         # Argument: Caching.
