@@ -1,6 +1,6 @@
 # Project configuration.
 project:
-    name: test
+    name: test_mock
 
 package:
     remote: master

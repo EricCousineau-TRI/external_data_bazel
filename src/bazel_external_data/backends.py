@@ -4,9 +4,15 @@ import os
 from bazel_external_data import util
 from bazel_external_data.base import Backend
 
-# TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
-# dependency.
-# If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
+# TODO(eric.cousineau): Consider implementing LFS protocol?
+
+def get_default_backends():
+    return {
+        "url": UrlBackend,
+        "url_templates": UrlTemplatesBackend,
+        "girder": GirderBackend,
+    }
+
 
 def _has_file(self, url):
     first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
@@ -18,6 +24,7 @@ def _has_file(self, url):
         return True
     else:
         raise RuntimeError("Unknown code: {}".format(first_line))
+
 
 def _download_file(self, url, output_file):
     util.curl('-L -o {output_file} {url}'.format(url=url, output_file=output_file))
@@ -65,8 +72,12 @@ class UrlTemplatesBackend(Backend):
         algo = 'sha512'
         raise util.DownloadError("Could not download {}:{} from:\n{}".format(algo, sha, "\n".join(self._urls)))
 
+# TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
+# dependency.
+# If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
 
 class GirderBackend(Backend):
+    """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
         self._url = config['url']
@@ -143,11 +154,3 @@ class GirderBackend(Backend):
         with open(filepath, 'rb') as fd:
             print("Uploading: {}".format(filepath))
             gc.uploadFile(self._folder_id, fd, name=item_name, size=size, parentType='folder', reference=ref)
-
-
-def get_default_backends():
-    return {
-        "url": UrlBackend,
-        "url_templates": UrlTemplatesBackend,
-        "girder": GirderBackend,
-    }
