@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
 import os
+import unittest
 
-with open('external/test_simple/data/direct.bin') as f:
-    contents = f.read()
-contents_expected = "Content for 'direct.bin'\n"
-assert contents == contents_expected
+class TestBasics(unittest.TestCase):
+    def test_files(self):
+        with open('external/test_simple/data/direct.bin') as f:
+            contents = f.read()
+        contents_expected = "Content for 'direct.bin'\n"
+        assert contents == contents_expected
 
-print("Expected contents")
+
+if __name__ == '__main__':
+    unittest.main()
