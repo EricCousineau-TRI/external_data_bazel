@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-# @note This does not use `girder_client`, to minimize dependencies.
-# @see util.py for more notes.
-
 from __future__ import absolute_import, print_function
 import sys
 import os

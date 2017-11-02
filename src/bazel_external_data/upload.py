@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-
-"""This script allows to upload data file revisoned based on a canonical path.
+"""
+This script allows to upload data file revisoned based on a canonical path.
 """
 
 from __future__ import absolute_import, print_function
