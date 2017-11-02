@@ -8,7 +8,7 @@ SETTINGS_DEFAULT = dict(
 )
 
 SHA_SUFFIX = ".sha512"
-PACKAGE_CONFIG_FILE = ".external_data.package.yml"
+PACKAGE_CONFIG_FILE = ".external_data.yml"
 
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
@@ -94,10 +94,12 @@ def external_data(file, mode='normal', url=None, visibility=None,
 
         sentinel = settings['sentinel']
         extra_data = settings['extra_data']
+        # Find each package configuration file for the given file.
+        package_config_files = _find_package_config_files(sha_file)
         # TODO: Presently, this could be set to `glob([PACKAGE_CONFIG_FILE])`; however, this would not include sub-package
         # directories. Example: sha_file = "test.bin.sha512" will find the appropriate file, but
         # sha_file = "a/b/c/test.bin.sha512" will not also search {"a/", "a/b/", "a/b/c/"}.
-        data = [sentinel] + extra_data
+        data = [sentinel] + package_config_files + extra_data
 
         native.genrule(
             name = name,
@@ -159,4 +161,16 @@ def get_original_files(sha_files):
             fail("SHA file does end with '{}': '{}'".format(SHA_SUFFIX, sha_file))
         file = sha_file[:-len(SHA_SUFFIX)]
         files.append(file)
+    return files
+
+def _find_package_config_files(filepath):
+    # TODO(eric.cousineau): This may get expensive... Is there a way to specify this more simply???
+    # Or even more consistently???
+    sep = '/'
+    pieces = filepath.split(sep)
+    test_files = []
+    for i in range(len(pieces)):
+        test_file = sep.join(pieces[0:i] + [PACKAGE_CONFIG_FILE])
+        test_files.append(test_file)
+    files = native.glob(test_files)
     return files
