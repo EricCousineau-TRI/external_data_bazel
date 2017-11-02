@@ -1,22 +1,22 @@
-SETTINGS_DEFAULT = struct(
-    ENABLE_WARN = True,
-    VERBOSE = False,
-    CHECK_FILE = False,
-    EXTRA_ARGS = "",
+SETTINGS_DEFAULT = dict(
+    enable_warn = True,
+    verbose = False,
+    check_file = False,
+    extra_args = "",
+    sentinel = "//:external_data_sentinel",
+    extra_data = [],
 )
 
 SHA_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.package.yml"
-SENTINEL_DEFAULT = "//:external_data_sentinel"
 
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data(file, mode='normal', url=None, visibility=None, settings=SETTINGS_DEFAULT,
-                  sentinel=SENTINEL_DEFAULT,
-                  data = []):
+def external_data(file, mode='normal', url=None, visibility=None,
+                  settings=SETTINGS_DEFAULT):
     """
     Macro for defining a large file.
 
@@ -32,18 +32,14 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
     data:
         Any additional data needed to execute the download command (e.g. configuration files).
     """
-
-    # Cannot access environment for this file...
-    # Use this?
-    # https://docs.bazel.build/versions/master/skylark/lib/actions.html#run_shell
-    # Nope. Only allows using existing PATH / LD_LIBRARY_PATH or not.
-    # Would have to specify environment variables here, and would prefer to not need
-    # this...
+    # Overlay.
+    # TODO: Check for invalid settings?
+    settings = SETTINGS_DEFAULT + settings
 
     if mode == 'devel':
         # TODO(eric.cousineau): It'd be nice if there is a way to (a) check if there is
         # a `*.sha512` file, and if so, (b) check the sha of the input file.
-        if settings.ENABLE_WARN:
+        if settings['enable_warn']:
             # TODO(eric.cousineau): Print full location of given file?
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +
                   "\n  Using local workspace file in development mode." +
@@ -60,7 +56,7 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
         # Binary:
         cmd = "$(location {}) ".format(tool)
         # Argument: Verbosity.
-        if settings.VERBOSE:
+        if settings['verbose']:
             cmd += "--verbose "
         # Argument: Project root. Guess from the input file rather than PWD, so that a file could
         # consumed by a downstream Bazel project.
@@ -71,7 +67,7 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
             # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
             cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
         # Extra Arguments (for project settings).
-        extra_args = getattr(settings, 'EXTRA_ARGS', None)
+        extra_args = settings['extra_args']
         if extra_args:
             cmd += extra_args + " "
         # Subcommand: Download.
@@ -89,23 +85,23 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
-        if settings.CHECK_FILE:
+        if settings['check_file']:
             cmd += "--check_file=extra "
 
-        if settings.VERBOSE:
+        if settings['verbose']:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
+        sentinel = settings['sentinel']
+        extra_data = settings['extra_data']
         # TODO: Presently, this could be set to `glob([PACKAGE_CONFIG_FILE])`; however, this would not include sub-package
         # directories. Example: sha_file = "test.bin.sha512" will find the appropriate file, but
         # sha_file = "a/b/c/test.bin.sha512" will not also search {"a/", "a/b/", "a/b/c/"}.
-        package_data = [
-            sentinel,
-        ]
+        data = [sentinel] + extra_data
 
         native.genrule(
             name = name,
-            srcs = [sha_file] + data + package_data,
+            srcs = [sha_file] + data,
             outs = [file],
             cmd = cmd,
             tools = [tool],
@@ -119,15 +115,17 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group(name, files, files_devel = [], mode='normal', visibility=None, settings=SETTINGS_DEFAULT,
-                        sentinel=SENTINEL_DEFAULT,
-                        data = []):
+def external_data_group(name, files, files_devel = [], mode='normal', visibility=None,
+                        settings=SETTINGS_DEFAULT):
     """ @see external_data """
 
-    if settings.ENABLE_WARN and files_devel and mode == "devel":
+    # Overlay.
+    settings = SETTINGS_DEFAULT + settings
+
+    if settings['enable_warn'] and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
-    kwargs = {'sentinel': sentinel, 'visibility': visibility, 'settings': settings, 'data': data}
+    kwargs = {'visibility': visibility, 'settings': settings}
 
     for file in files:
         if file not in files_devel:
@@ -141,7 +139,7 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
         if file not in files:
             devel_only.append(file)
             external_data(file, "devel", **kwargs)
-    if settings.ENABLE_WARN and devel_only:
+    if settings['enable_warn'] and devel_only:
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +
               "  If you remove `files_devel`, then these files will not be part of the target.\n" +
