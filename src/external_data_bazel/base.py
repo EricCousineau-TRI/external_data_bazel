@@ -373,7 +373,10 @@ def load_project(guess_filepath, user_config_in = None):
     """
     if user_config_in is None:
         # Can augment `user_config` with project-specific settings, if needed.
-        user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT)
+        if os.path.exists(USER_CONFIG_FILE_DEFAULT):
+            user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT)
+        else:
+            user_config = {}
     else:
         user_config = user_config_in
     user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)
