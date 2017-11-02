@@ -9,3 +9,15 @@ alias(
     name = "cli",
     actual = "//src/bazel_external_data:cli",
 )
+
+filegroup(
+    name = "workflow_mock",
+    srcs = [
+        "src",
+        "tools",
+        "test_mock",
+        "WORKSPACE",
+        "BUILD.bazel"
+    ],
+    visibility = ["//test_workflow:__subpackages__"],
+)

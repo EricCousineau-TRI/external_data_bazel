@@ -55,7 +55,7 @@ class MockBackend(Backend):
         self._map[sha] = dest
 
 
-def _has_file(self, url):
+def _has_file(url):
     first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
     bad = ["HTTP/1.1 404 Not Found"]
     good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]

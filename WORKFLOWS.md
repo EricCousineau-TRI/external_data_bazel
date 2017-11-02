@@ -157,9 +157,9 @@ This is used in Bazel via `macros.bzl`:
 
 ## Download Files and Expose as Symlinks (Do Not Copy)
 
-If you just need easy read-only access to files (and don't want to deal with Bazel's paths), you can use `--symlink_from_cache`:
+If you just need easy read-only access to files (and don't want to deal with Bazel's paths), you can use `--symlink`:
 
-    bazel run //tools/external_data:download -- --symlink_from_cache ~+/*.sha512
+    bazel run //tools/external_data:download -- --symlink ~+/*.sha512
 
 
 ## Testing experimental large files in PRs

@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-# @note This does not use `girder_client`, to minimize dependencies.
-# @see util.py for more notes.
-
 from __future__ import absolute_import, print_function
 import sys
 import os
@@ -27,7 +22,7 @@ def add_arguments(parser):
 
     parser.add_argument('--no_cache', action='store_true',
                         help='Always download, and do not cache the result.')
-    parser.add_argument('--symlink_from_cache', action='store_true',
+    parser.add_argument('--symlink', action='store_true',
                         help='Use a symlink from the cache rather than copying the file.')
     parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
                         help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
@@ -101,4 +96,4 @@ def do_download(args, project, sha_file, output_file, remote_in=None):
     download_type = remote.download_file(
         sha, output_file,
         use_cache=use_cache,
-        symlink_from_cache=args.symlink_from_cache)
+        symlink=args.symlink)

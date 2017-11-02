@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-
-"""This script allows to upload data file revisoned based on a canonical path.
+"""
+This script allows to upload data file revisoned based on a canonical path.
 """
 
 from __future__ import absolute_import, print_function
@@ -37,8 +36,6 @@ def run(args, project, remote_in):
 
 
 def do_upload(project, filepath, remote_in):
-    if not os.path.isabs(filepath):
-        raise RuntimeError("Must supply absolute path: {}".format(filepath))
     filepath = os.path.abspath(filepath)
     if filepath.endswith(SHA_SUFFIX):
         filepath_guess = filepath[:-len(SHA_SUFFIX)]

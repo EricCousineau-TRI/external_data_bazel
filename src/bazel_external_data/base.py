@@ -80,11 +80,11 @@ class Remote(object):
                 raise e
 
     def download_file(self, sha, output_file,
-                      use_cache = True, symlink_from_cache = True):
+                      use_cache = True, symlink = True):
         """ Downloads a file.
         @param use_cache
             Uses `project.user.cache_dir` as a cache. Normally, this is user-specified.
-        @param symlink_from_cache
+        @param symlink
             If `use_cache` is true, this will place a symlink to the read-only
             cache file at `output_file`.
         @returns 'cache' if there was a cachce hit, 'download' otherwise.
@@ -93,7 +93,7 @@ class Remote(object):
         # Helper functions.
         def get_cached(skip_sha_check=False):
             # Can use cache. Copy to output path.
-            if symlink_from_cache:
+            if symlink:
                 util.subshell(['ln', '-s', cache_path, output_file])
             else:
                 util.subshell(['cp', cache_path, output_file])
