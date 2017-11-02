@@ -3,6 +3,6 @@ workspace(name = "test_mock")
 load("//tools:path.bzl", "dirname")
 
 local_repository(
-    name = "org_drake_bazel_external_data",
+    name = "external_data_bazel_pkg",
     path = dirname(__workspace_dir__),
 )

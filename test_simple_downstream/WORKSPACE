@@ -4,7 +4,7 @@ load("//tools:path.bzl", "dirname")
 
 # <workspace_import name="test_simple">
 local_repository(
-    name = "org_drake_bazel_external_data",
+    name = "external_data_bazel_pkg",
     path = dirname(__workspace_dir__),
 )
 # </workspace_import>  <!-- test_simple -->

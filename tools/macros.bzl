@@ -58,7 +58,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
     elif mode in ['normal', 'no_cache']:
         name = "{}__download".format(file)
         sha_file = file + SHA_SUFFIX
-        tool = "@org_drake_bazel_external_data//:cli"
+        tool = "@external_data_bazel_pkg//:cli"
 
         # Binary:
         cmd = "$(location {}) ".format(tool)

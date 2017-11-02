@@ -1,5 +1,5 @@
 # We will inject additional settings here.
-load("@org_drake_bazel_external_data//tools:macros.bzl",
+load("@external_data_bazel_pkg//tools:macros.bzl",
     _external_data="external_data",
     _external_data_group="external_data_group",
     "get_original_files"
