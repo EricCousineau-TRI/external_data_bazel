@@ -2,6 +2,7 @@ filegroup(
     name = 'sentinel',
     srcs = [
         ':.external_data.project.yml',
+        "//tools:bazel_external_data_config.py",
     ],
     visibility=["//visibility:public"],
 )

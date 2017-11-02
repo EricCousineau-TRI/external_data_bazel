@@ -16,28 +16,9 @@ def guess_start_dir(filepath):
         return os.path.dirname(filepath)
 
 
-def _guess_start_dir_bazel(guess_filepath, rel_path):
-    if os.path.isdir(guess_filepath):
-        guess_start_dir = guess_filepath
-    else:
-        guess_start_dir = os.path.dirname(guess_filepath)
-    test_dir = os.path.join(guess_start_dir, rel_path)
-    if os.path.isdir(test_dir):
-        return test_dir
-    else:
-        return guess_start_dir
-
-
-def _in_bazel_execroot(filepath):
-    # WARNING: This won't apply if the user changes it...
-    return '/.cache/bazel/' in filepath
-
-
-def find_project_root_bazel(guess_filepath, sentinel, relpath):
+def find_project_root(guess_filepath, sentinel):
     """ Finds the project root, accounting for oddities when in Bazel execroot-land.
-    This will attempt to find the file sentinel
-    @param rel_path
-        Path of project root relative to Bazel workspace.
+    This will attempt to find the file sentinel.
     """
     # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
     # However, because Bazel does symlink magic that is not easily parseable,
@@ -49,7 +30,7 @@ def find_project_root_bazel(guess_filepath, sentinel, relpath):
     #  (1) Custom `.project-root` sentinel. Fine, but useful for accurate versioning,
     # which is the entire point of `.project-root`.
     #  (2) `.git` - What we really want, just need to make sure Git sees this.
-    start_dir = _guess_start_dir_bazel(guess_filepath, relpath)
+    start_dir = guess_start_dir(guess_filepath)
     root_file = util.find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
     root_alternatives = []
     if os.path.islink(root_file):
@@ -61,21 +42,6 @@ def find_project_root_bazel(guess_filepath, sentinel, relpath):
         assert os.path.isabs(root_file)
         if os.path.islink(root_file):
             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
-    elif relpath and _in_bazel_execroot(root_file):
-        # Check up according to the relative path.
-        old_root_dir = os.path.dirname(root_file)
-        pieces = relpath.split('/')
-        up_dir_rel = '/'.join(['..'] * len(pieces))
-        execroot_dir = os.path.join(old_root_dir, up_dir_rel)
-        # Change to potential bazel cache dir, and if the top-level piece is a symlink, assume that we should use that.
-        if os.path.isdir(os.path.join(execroot_dir, 'bazel-out')):
-            # We're in Bazel execroot. Normalize.
-            first_dir = os.path.normpath(os.path.join(execroot_dir, pieces[0]))
-            if os.path.islink(first_dir):
-                extra = pieces[1:] + [sentinel['file']]
-                root_file = os.path.join(os.readlink(first_dir), *extra)
-                assert os.path.exists(root_file)
-                root_alternatives.append(old_root_dir)
     root = os.path.dirname(root_file)
     return (root, root_alternatives)
 

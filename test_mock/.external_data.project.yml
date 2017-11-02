@@ -1,2 +1,3 @@
 # Project configuration.
 name: test_mock
+setup_config_py: tools/bazel_external_data_config.py

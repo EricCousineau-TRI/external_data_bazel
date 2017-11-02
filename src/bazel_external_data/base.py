@@ -221,13 +221,12 @@ class User(object):
 class Project(object):
     """ Specifies a project's structure, caches packages (and remotes), and determines the mapping
     between files and their packages / remotes (for download / uploading). """
-    def __init__(self, config, user, setup):
+    def __init__(self, config, user, backends):
         self.config = config
         self.user = user
-        self.setup = setup
 
         # Register backends.
-        self._backends = self.setup.get_backends()
+        self._backends = backends
 
         # Load project-specific settings.
         self.name = self.config['name']
@@ -236,15 +235,15 @@ class Project(object):
 
         # Set up for root package.
         self._packages = {}
-        self.root_package = None
+        self._root_package = None
 
     def init_root_package(self, package_config):
         """ Initializes the root package for a project.
         Must be called close to the project being initialized. """
-        assert self.root_package is None
-        self.root_package = Package(package_config, self, None)
+        assert self._root_package is None
+        self._root_package = Package(package_config, self, None)
         config_file_rel = self.get_relpath(package_config['config_file'])
-        self._packages[config_file_rel] = self.root_package
+        self._packages[config_file_rel] = self._root_package
 
     def debug_dump_user_config(self):
         """ Returns the user settings configuration. """
@@ -301,7 +300,7 @@ class Project(object):
 
     def _load_package(self, filepath):
         """ Load the package for the given filepath. """
-        config_files = self.setup.get_package_config_files(self, filepath)
+        config_files = _find_package_config_files(self, filepath)
         package = None
         for config_file in config_files:
             config_file_rel = self.get_relpath(config_file)
@@ -328,7 +327,7 @@ class Project(object):
         remote_name = 'command_line'
         assert file_name not in self._packages
         if start_dir is None:
-            parent = self.root_package
+            parent = self._root_package
         else:
             parent = self._load_package(start_dir)
         package_config = {
@@ -342,40 +341,27 @@ class Project(object):
         return package.remote
 
 
-class ProjectSetup(object):
-    """ Specifies how configuration is loaded for a project. """
-    def __init__(self):
-        self.sentinel = {'file': SENTINEL_DEFAULT}
-        self.relpath = ''
+def _load_project_config(guess_filepath):
+    # Load the project user configuration from a filepath to guess to find the project root.
+    # Start guessing where the project lives.
+    sentinel = {'file': SENTINEL_DEFAULT}
+    project_root, root_alternatives = config_helpers.find_project_root(guess_filepath, sentinel)
+    # Load configuration.
+    project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE_DEFAULT))
+    project_config = config_helpers.parse_config_file(project_config_file)
+    # Inject project information.
+    project_config['root'] = project_root
+    # Cache symlink root, and use this to get relative workspace path if the file is specified in
+    # the symlink'd directory (e.g. Bazel runfiles).
+    project_config['root_alternatives'] = root_alternatives
+    return project_config
 
-    def load_config(self, guess_filepath):
-        """ Load the project user configuration from a filepath to guess to find the project root.
-        @param guess_filepath Initial guess at the project root.
-        @return project_config
-        """
-        # Start guessing where the project lives.
-        project_root, root_alternatives = config_helpers.find_project_root_bazel(guess_filepath, self.sentinel, self.relpath)
-        # Load configuration.
-        project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE_DEFAULT))
-        project_config = config_helpers.parse_config_file(project_config_file)
-        # Inject project information.
-        project_config['root'] = project_root
-        # Cache symlink root, and use this to get relative workspace path if the file is specified in
-        # the symlink'd directory (e.g. Bazel runfiles).
-        project_config['root_alternatives'] = root_alternatives
-        return project_config
-
-    def get_backends(self):
-        """ Get backends specific to be used in this project setup. """
-        from bazel_external_data.backends import get_default_backends
-        return get_default_backends()
-
-    def get_package_config_files(self, project, filepath_in):
-        """ Get all package's config files for a given filepath.
-        This permits specifying a hierarchy of packages. """
-        filepath = project.get_canonical_path(filepath_in)
-        start_dir = config_helpers.guess_start_dir(filepath)
-        return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE_DEFAULT)
+def _find_package_config_files(project, filepath_in):
+    """ Get all package's config files for a given filepath.
+    This permits specifying a hierarchy of packages. """
+    filepath = project.get_canonical_path(filepath_in)
+    start_dir = config_helpers.guess_start_dir(filepath)
+    return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE_DEFAULT)
 
 
 def load_project(guess_filepath, user_config_in = None):
@@ -393,10 +379,19 @@ def load_project(guess_filepath, user_config_in = None):
     user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)
     user = User(user_config)
 
-    import bazel_external_data_config as custom
-    setup = custom.get_setup()
-    project_config = setup.load_config(guess_filepath)
-    project = Project(project_config, user, setup)
+    project_config = _load_project_config(guess_filepath)
+
+    from bazel_external_data.backends import get_default_backends
+    setup_config_py = project_config.get('setup_config_py')
+    if setup_config_py:
+        setup_config = {}
+        with open(os.path.join(project_config['root'], setup_config_py)) as f:
+            exec(f.read(), globals(), setup_config)
+        get_backends = setup_config.get('get_backends', get_default_backends)
+    else:
+        get_backends = get_default_backends
+
+    project = Project(project_config, user, get_backends())
     root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE_DEFAULT))
     project.init_root_package(root_package_config)
     return project
