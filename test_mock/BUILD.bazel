@@ -1,10 +1,6 @@
 filegroup(
     name = "external_data_sentinel",
-    srcs = [
-        ":.external_data.project.yml",
-        "//tools:bazel_external_data_config.py",
-        "//tools:external_data.user.yml",
-    ],
+    srcs = [":.external_data.project.yml"],
     visibility=["//visibility:public"],
 )
 

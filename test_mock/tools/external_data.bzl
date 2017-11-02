@@ -10,6 +10,7 @@ SETTINGS = dict(
     extra_data = [
         "//:external_data_sentinel",
         "//tools:external_data.user.yml",
+        "//tools:external_data_config.py",
     ],
     extra_args = "--user_config $(location //tools:external_data.user.yml)",
 )

@@ -8,11 +8,14 @@ SETTINGS_DEFAULT = dict(
     check_file = False,
     # Extra data. Generally, this is just the sentinel data (so we can detect the project
     # root). However, any custom configuration modules can be included here as well.
+    # WARNING: The sentinel MUST be placed next to the workspace root. Logic for non-workspace
+    # root files is too complex (and useless).
     extra_data = ["//:external_data_sentinel"],
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
     extra_args = "",
 )
+
 
 SHA_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.yml"
