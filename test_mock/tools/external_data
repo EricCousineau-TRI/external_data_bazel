@@ -4,7 +4,7 @@ set -e -u
 # Proxy to use Bazel binary, but access to PWD.
 
 workspace_dir=$(cd $(dirname $0)/.. && pwd)
-bin_dir=${workspace_dir}/bazel-bin/external/org_drake_bazel_external_data/src/bazel_external_data
+bin_dir=${workspace_dir}/bazel-bin/external/external_data_bazel_pkg/src/external_data_bazel
 bin=${bin_dir}/cli
 
 extra_args=--user_config=${workspace_dir}/tools/external_data.user.yml
@@ -16,7 +16,7 @@ if [[ $# -gt 0 && $1 == --do_build ]]; then
 fi
 
 if [[ ! -f ${bin} || -n $do_build ]]; then
-    bazel build @org_drake_bazel_external_data//:cli
+    bazel build @external_data_bazel_pkg//:cli
 fi
 
 echo "cmd: ${bin} ${extra_args} $@" | \
