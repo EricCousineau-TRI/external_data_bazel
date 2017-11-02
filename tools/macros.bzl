@@ -94,12 +94,15 @@ def external_data(file, mode='normal', url=None, visibility=None,
 
         sentinel = settings['sentinel']
         extra_data = settings['extra_data']
-        # Find each package configuration file for the given file.
-        package_config_files = _find_package_config_files(sha_file)
-        # TODO: Presently, this could be set to `glob([PACKAGE_CONFIG_FILE])`; however, this would not include sub-package
-        # directories. Example: sha_file = "test.bin.sha512" will find the appropriate file, but
-        # sha_file = "a/b/c/test.bin.sha512" will not also search {"a/", "a/b/", "a/b/c/"}.
-        data = [sentinel] + package_config_files + extra_data
+        # NOTE: This could be set to `glob([PACKAGE_CONFIG_FILE])` or something of that extent;
+        # this could potentially include glob-visibile sub-package config files.
+        # HOWEVER, this would not include parent files... So we have to keep the weird project root
+        # setup going...
+        # Example: In package "x", sha_file = "a/test.bin.sha512" *could* find
+        # ["//x:.config_file", "//x/a:.config_file"].
+        # However, it would NOT find ["//:.config_file"].
+        # package_config_files = _find_package_config_files(sha_file)
+        data = [sentinel] + extra_data
 
         native.genrule(
             name = name,
@@ -162,6 +165,7 @@ def get_original_files(sha_files):
         file = sha_file[:-len(SHA_SUFFIX)]
         files.append(file)
     return files
+
 
 def _find_package_config_files(filepath):
     # TODO(eric.cousineau): This may get expensive... Is there a way to specify this more simply???
