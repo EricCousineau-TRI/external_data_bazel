@@ -1,7 +1,3 @@
-load("@org_drake_bazel_external_data//tools:macros.bzl",
-    "add_external_data_tools",
-)
-
 # Do not use user's configuration.
 exports_files(
     srcs = [
@@ -9,5 +5,3 @@ exports_files(
         "external_data.user.yml"
     ],
 )
-
-add_external_data_tools()

@@ -1,10 +1,9 @@
 load("@org_drake_bazel_external_data//tools:macros.bzl",
-    "external_data_impl",
-    "external_data_group_impl",
+    _external_data="external_data",
+    _external_data_group="external_data_group",
     "get_original_files"
 )
 
-TOOL = "//tools:download"
 SETTINGS = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
@@ -13,20 +12,21 @@ SETTINGS = struct(
     EXTRA_ARGS = "--user_config=$(location //tools:external_data.user.yml)",
 )
 
+KWARGS = {
+    "settings": SETTINGS,
+    "data": ['//tools:external_data.user.yml'],
+}
+
 def external_data(*args, **kwargs):
-    external_data_impl(
+    kwargs_ext = kwargs + KWARGS
+    _external_data(
         *args,
-        tool = TOOL,
-        settings = SETTINGS,
-        data = ['//tools:external_data.user.yml'],
-        **kwargs
+        **kwargs_ext
     )
 
 def external_data_group(*args, **kwargs):
-    external_data_group_impl(
+    kwargs_ext = kwargs + KWARGS
+    _external_data_group(
         *args,
-        tool = TOOL,
-        settings = SETTINGS,
-        data = ['//tools:external_data.user.yml'],
-        **kwargs
+        **kwargs_ext
     )

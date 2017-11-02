@@ -7,16 +7,16 @@ SETTINGS_DEFAULT = struct(
 
 SHA_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.package.yml"
-
+SENTINEL_DEFAULT = "//:external_data_sentinel"
 
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data_impl(file, mode='normal', url=None, visibility=None, settings=SETTINGS_DEFAULT,
-                       sentinel="//:external_data_files",
-                       data = []):
+def external_data(file, mode='normal', url=None, visibility=None, settings=SETTINGS_DEFAULT,
+                  sentinel=SENTINEL_DEFAULT,
+                  data = []):
     """
     Macro for defining a large file.
 
@@ -116,27 +116,28 @@ def external_data_impl(file, mode='normal', url=None, visibility=None, settings=
         fail("Invalid mode: {}".format(mode))
 
 
-def external_data_group_impl(name, files, files_devel = [], mode='normal', tool=None, visibility=None, settings=SETTINGS_DEFAULT,
-                             data = []):
+def external_data_group(name, files, files_devel = [], mode='normal', visibility=None, settings=SETTINGS_DEFAULT,
+                        sentinel=SENTINEL_DEFAULT,
+                        data = []):
     """ @see external_data """
 
     if settings.ENABLE_WARN and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
 
-    kwargs = {'tool': tool, 'visibility': visibility, 'settings': settings, 'data': data}
+    kwargs = {'sentinel': sentinel, 'visibility': visibility, 'settings': settings, 'data': data}
 
     for file in files:
         if file not in files_devel:
-            external_data_impl(file, mode, **kwargs)
+            external_data(file, mode, **kwargs)
         else:
-            external_data_impl(file, "devel", **kwargs)
+            external_data(file, "devel", **kwargs)
 
     # Consume leftover `files_devel`.
     devel_only = []
     for file in files_devel:
         if file not in files:
             devel_only.append(file)
-            external_data_impl(file, "devel", **kwargs)
+            external_data(file, "devel", **kwargs)
     if settings.ENABLE_WARN and devel_only:
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +
