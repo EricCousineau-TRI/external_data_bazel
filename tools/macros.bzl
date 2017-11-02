@@ -76,8 +76,6 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
             cmd += extra_args + " "
         # Subcommand: Download.
         cmd += "download "
-        # Argument: Ensure that we can permit relative paths.
-        cmd += "--allow_relpath "
         # Argument: Caching.
         if mode == 'no_cache':
             cmd += "--no_cache "

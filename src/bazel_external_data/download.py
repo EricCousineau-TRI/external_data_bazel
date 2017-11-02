@@ -29,8 +29,6 @@ def add_arguments(parser):
                         help='Always download, and do not cache the result.')
     parser.add_argument('--symlink_from_cache', action='store_true',
                         help='Use a symlink from the cache rather than copying the file.')
-    parser.add_argument('--allow_relpath', action='store_true',
-                        help='Permit relative paths. Having this on by default makes using Bazel simpler.')
     parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
                         help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
                              + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
@@ -54,15 +52,11 @@ def run(args, project, remote_in):
             else:
                 action()
 
+
 def do_download(args, project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
-    if not args.allow_relpath:
-        files = [sha_file, output_file]
-        if not all(map(os.path.isabs, files)):
-            raise RuntimeError("Must specify absolute paths:\n  {}".format("\n".join(files)))
-    else:
-        sha_file = os.path.abspath(sha_file)
-        output_file = os.path.abspath(output_file)
+    sha_file = os.path.abspath(sha_file)
+    output_file = os.path.abspath(output_file)
 
     # Get the sha.
     if not os.path.isfile(sha_file):
