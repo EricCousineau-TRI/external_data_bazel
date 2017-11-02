@@ -222,7 +222,7 @@ find . -name '*.sha512' | xargs ../tools/external_data download --check_file=onl
 cd ../data/
 
 # Remove any *.bin files that may have been from the original folder.
-find . -name '*.bin' | xargs rm
+find . -name '*.bin' | xargs rm -f
 
 # @note We must pre-download `basic.bin` to cache it so that `package/basic.bin` is valid.
 # @note We must also pre-download `direct.bin` since it's download is Bazel-specific.
