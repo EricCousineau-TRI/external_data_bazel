@@ -17,6 +17,7 @@ list_rm() {
         fi
     done
 }
+should_fail() { eecho "Should have failed!"; exit 1; }
 
 # Follow `WORKFLOWS.md`
 mock_dir=/tmp/bazel_external_data/bazel_external_data_mock
@@ -116,7 +117,7 @@ diff ${upload_file} ./new.bin > /dev/null
 
 # - Change the original, such that it'd fail the test, and ensure failure.
 echo "User changed the file" > ./new.bin
-! _bazel-test :test_bascis
+_bazel-test :test_bascis && should_fail
 [[ ! -d ${cache_dir} ]]
 
 # Now switch to 'no_cache' mode.
@@ -145,7 +146,7 @@ diff ${cache_file} ./expected.txt > /dev/null
 
 # Now download the file via the command line.
 # - This should fail since we already have the file.
-! ../tools/external_data download ./new.bin.sha512
+../tools/external_data download ./new.bin.sha512 && should_fail
 # - Try it with -f
 ../tools/external_data download -f ./new.bin.sha512
 diff new.bin ./expected.txt > /dev/null
@@ -159,7 +160,7 @@ cat > expected.txt <<EOF
 New contents!
 EOF
 # - Must be different.
-! diff new.bin expected.txt > /dev/null
+diff new.bin expected.txt > /dev/null && should_fail
 # - Now update local workspace version.
 cp expected.txt new.bin
 # Change to development mode.
@@ -170,7 +171,7 @@ _bazel-test :test_basics
 
 # Now upload the newest version.
 # - Trying to upload the SHA-512 file should fail.
-! ../tools/external_data upload ./new.bin.sha512
+../tools/external_data upload ./new.bin.sha512 && should_fail
 ../tools/external_data upload ./new.bin
 
 # There should be two files uploaded.
@@ -190,13 +191,13 @@ _bazel-test :test_basics
 diff new.bin expected.txt > /dev/null
 
 # Make sure symlink is read-only.
-! echo 'Try to overwrite' > ./new.bin
+echo 'Try to overwrite' > ./new.bin && should_fail
 
 # Corrupt the cache.
 cache_file=$(readlink ./new.bin)
 chmod +w ${cache_file}
 echo "Corrupted" > ${cache_file}
-! diff new.bin expected.txt > /dev/null
+diff new.bin expected.txt > /dev/null && should_fail
 # - Bazel should have recognized the write on the internally built file.
 # It will re-trigger a download.
 _bazel-test :test_basics
@@ -232,9 +233,9 @@ find . -name '*.sha512' | xargs ../tools/external_data download
 
 ../tools/external_data download --check_file=only ./package/extra.bin.sha512
 # Ensure that 'package/basic.bin' is invalid with --check_file.
-! ../tools/external_data download --check_file=only ./package/basic.bin.sha512
+../tools/external_data download --check_file=only ./package/basic.bin.sha512 && should_fail
 # Same for `direct.bin`, when not consumed in Bazel.
-! ../tools/external_data download --check_file=only ./package/direct.bin.sha512
+../tools/external_data download --check_file=only ./package/direct.bin.sha512 && should_fail
 
 # Now enable `check_file` in Bazel, and ensure that everything passes, since
 # all files defined in Bazel are covered by the remote structures.
@@ -243,7 +244,9 @@ cat ../tools/external_data.bzl
 
 _bazel build :data
 
-# Now add a bad (but cached) file from our original setup.
+# Now add the file from our original setup.
+# - Delete the uploads so that is now an invalid file.
+rm -rf ${upload_dir}
 # - Add it to the glob setup to ensure that it gets pulled into Bazel.
 [[ ! -f new.bin.sha512 ]]
 [[ ! -f new.bin ]]
@@ -252,8 +255,8 @@ cp ../data_new/new.bin.sha512 glob_4.bin.sha512
 ../tools/external_data download glob_4.bin.sha512
 diff glob_4.bin ../data_new/expected.txt > /dev/null
 # - Now check via command-line that it fails.
-../tools/external_data download --check_file=only ./glob_4.bin.sha512
+../tools/external_data download --check_file=only ./glob_4.bin.sha512 && should_fail
 # - Now ensure that Bazel fails when building the file.
-! _bazel build :data
+_bazel build :data && should_fail
 
 echo "[ Done ]"
