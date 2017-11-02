@@ -6,9 +6,10 @@ mkcd() { mkdir -p ${1} && cd ${1}; }
 _bazel() { bazel --bazelrc=/dev/null "$@"; }
 # For testing, we should be able to both (a) test and (b) run the target.
 _bazel-test() { _bazel test "$@" && _bazel run "$@"; }
+_readlink() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' ${1}; }
 
 # Follow `WORKFLOWS.md`
-mock_dir=$PWD/bazel_external_data_mock
+mock_dir=${PWD}/bazel_external_data_mock
 
 # TODO: Prevent this from running outside of Bazel.
 
@@ -17,8 +18,9 @@ srcs="src tools test_mock BUILD.bazel WORKSPACE"
 rm -rf ${mock_dir}
 mkdir ${mock_dir}
 for src in ${srcs}; do
-    cp -r $(readlink ${src}) ${mock_dir}
+    cp -r $(_readlink ${src}) ${mock_dir}
 done
+# chmod -R +w ${mock_dir}
 
 # Clear out any old cache and upload in mock directory.
 rmsy() {
@@ -29,6 +31,7 @@ rmsy() {
     fi
 }
 
+# This is only important when running this test via `bazel run`.
 cache_dir=/tmp/bazel_external_data/test_cache
 rmsy ${cache_dir}
 upload_dir=/tmp/bazel_external_data/upload
