@@ -1,0 +1,19 @@
+#!/bin/bash
+set -e -u
+
+# Proxy to use Bazel binary, but access to PWD.
+
+workspace_dir=$(cd $(dirname $0)/.. && pwd)
+bin=${workspace_dir}/bazel-bin/external/org_drake_bazel_external_data/src/bazel_external_data/download
+
+do_build=
+if [[ $# -gt 0 && $1 == --do_build ]]; then
+    do_build=1
+    shift
+fi
+
+if [[ ! -f ${bin} || -n $do_build ]]; then
+    bazel build @org_drake_bazel_external_data//:download
+fi
+
+${bin} "$@"

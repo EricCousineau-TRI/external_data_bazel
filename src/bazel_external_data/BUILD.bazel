@@ -7,13 +7,19 @@ py_library(
         "util.py",
     ],
     imports = [".."],
-    visibility=["//visibility:public"],
 )
 
 # TODO: Combine these in some sort of dispatch binary?
-exports_files(
-    srcs = [
-        "download.py",
-        "upload.py",
-    ],
+py_binary(
+    name = "download",
+    srcs = ["download.py"],
+    deps = [":base"],
+    visibility=["//visibility:public"],
+)
+
+py_binary(
+    name = "upload",
+    srcs = ["upload.py"],
+    deps = [":base"],
+    visibility=["//visibility:public"],
 )

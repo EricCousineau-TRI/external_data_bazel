@@ -13,7 +13,11 @@ import argparse
 
 from datetime import datetime
 
-from bazel_external_data import base
+from bazel_external_data import base, util
+
+if util.in_bazel_runfiles():
+    util.eprint("ERROR: Do not run this command via `bazel run`.")
+    exit(1)
 
 SHA_SUFFIX = base.SHA_SUFFIX
 

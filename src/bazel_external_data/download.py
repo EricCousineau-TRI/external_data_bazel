@@ -11,9 +11,13 @@ import argparse
 
 from bazel_external_data import base, util, config_helpers
 
-SHA_SUFFIX = base.SHA_SUFFIX
+if util.in_bazel_runfiles():
+    util.eprint("ERROR: Do not run this command via `bazel run`.")
+    exit(1)
 
-assert __name__ == '__main__'
+assert __name__ == "__main__"
+
+SHA_SUFFIX = base.SHA_SUFFIX
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 

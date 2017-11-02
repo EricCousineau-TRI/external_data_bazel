@@ -1,16 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 alias(
-    name = "base",
-    actual = "//src/bazel_external_data:base",
+    name = "download",
+    actual = "//src/bazel_external_data:download",
 )
 
 alias(
-    name = "download.py",
-    actual = "//src/bazel_external_data:download.py",
-)
-
-alias(
-    name = "upload.py",
-    actual = "//src/bazel_external_data:upload.py",
+    name = "upload",
+    actual = "//src/bazel_external_data:upload",
 )

@@ -6,54 +6,16 @@ SETTINGS_DEFAULT = struct(
 )
 
 SHA_SUFFIX = ".sha512"
+PACKAGE_CONFIG_FILE = ".external_data.package.yml"
 
-
-def add_external_data_tools(sentinel = "//:sentinel", prefix = ""):
-    """
-    Macro for defining external data tools.
-
-    @param sentinel
-        The file used to determine the project root from Bazel's execroot.
-    @param prefix
-        Normally, this macro produces "base" (py_library), "download" (py_binary), and
-        "upload" (py_binary). This argument prefixes these target names.
-    """
-    base_name = prefix + "base"
-    native.py_library(
-        name = base_name,
-        srcs = ["bazel_external_data_config.py"],
-        imports = ["."],
-        deps = [
-            "@org_drake_bazel_external_data//:base",
-        ],
-        data = [
-            sentinel,
-        ],
-    )
-
-    native.py_binary(
-        name = prefix + "download",
-        srcs = ["@org_drake_bazel_external_data//:download.py"],
-        deps = [
-            ":" + base_name,
-        ],
-        visibility = ["//visibility:public"],
-    )
-
-    native.py_binary(
-        name = "upload",
-        srcs = ["@org_drake_bazel_external_data//:upload.py"],
-        deps = [
-            ":" + base_name,
-        ],
-    )
 
 # TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
 # `tool`.
 # Downstream projects can call these as implementation methods, so that way they can fold
 # in their own configurations / project sentinels.
 
-def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None, settings=SETTINGS_DEFAULT,
+def external_data_impl(file, mode='normal', url=None, visibility=None, settings=SETTINGS_DEFAULT,
+                       sentinel="//:external_data_files",
                        data = []):
     """
     Macro for defining a large file.
@@ -91,8 +53,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
     elif mode in ['normal', 'no_cache']:
         name = "{}__download".format(file)
         sha_file = file + SHA_SUFFIX
-        if tool == None:
-            fail("Must define custom tool for a custom repository")
+        tool = "@org_drake_bazel_external_data//:download"
 
         # Binary:
         cmd = "$(location {}) ".format(tool)
@@ -101,6 +62,7 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             cmd += "--verbose "
         # Argument: Project root. Guess from the input file rather than PWD, so that a file could
         # consumed by a downstream Bazel project.
+        # (Otherwise, PWD will point to downstream project, which will make a conflict.)
         cmd += "--project_root_guess=$(location {}) ".format(sha_file)
         # Argument: Ensure that we can permit relative paths.
         cmd += "--allow_relpath "
@@ -131,9 +93,16 @@ def external_data_impl(file, mode='normal', url=None, tool=None, visibility=None
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
+        # TODO: Presently, this could be set to `glob([PACKAGE_CONFIG_FILE])`; however, this would not include sub-package
+        # directories. Example: sha_file = "test.bin.sha512" will find the appropriate file, but
+        # sha_file = "a/b/c/test.bin.sha512" will not also search {"a/", "a/b/", "a/b/c/"}.
+        package_data = [
+            sentinel,
+        ]
+
         native.genrule(
             name = name,
-            srcs = [sha_file] + data,
+            srcs = [sha_file] + data + package_data,
             outs = [file],
             cmd = cmd,
             tools = [tool],

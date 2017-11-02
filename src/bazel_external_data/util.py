@@ -14,9 +14,28 @@ def is_child_path(child_path, parent_path):
 # and a computation / check method.
 # Can pass SHAs as an object, rather than just a string.
 
+def in_bazel_runfiles(cur_dir=None, project=None):
+    # Typically, Bazel runfiles is structured something like
+    #   ${bazel_cache}/
+    # This should catch if the user has called `bazel run ...`, but not if this command is
+    # invoked by `bazel build ...` (or rather, that is called as a tool from a Bazel `genrule`).
+    if cur_dir is None:
+        cur_dir = os.getcwd()
+    pieces = cur_dir.split(os.path.sep)
+    if len(pieces) > 1:
+        if pieces[-2].endswith('.runfiles'):
+            # TODO: This may be overly constrained? This can produce false positives. Meh.
+            if project is not None:
+                return pieces[-1] == project
+            else:
+                return True
+    return False
+
+
 def compute_sha(filepath):
     sha = subshell(['sha512sum', filepath]).split(' ')[0]
     return sha
+
 
 def check_sha(sha_expected, filepath, do_throw=True):
     """ Check if a file has an expected SHA """
