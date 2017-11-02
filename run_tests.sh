@@ -9,21 +9,18 @@ _bazel() {
 echo "[ Example Interface ]"
 (
     cd test_simple
-    _bazel clean
     _bazel test //...
 )
 
 echo "[ Downstream Consumption ]"
 (
     cd test_simple_downstream
-    _bazel clean
     _bazel test //...
 )
 
 echo "[ Mock Storage ]"
 (
     cd test_mock
-    _bazel clean
     _bazel test //...
 )
 
