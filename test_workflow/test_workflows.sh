@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e -u -x
+set -e -u
+set -x
 
 eecho() { echo "$@" >&2; }
 mkcd() { mkdir -p ${1} && cd ${1}; }
@@ -7,9 +8,18 @@ _bazel() { bazel --bazelrc=/dev/null "$@"; }
 # For testing, we should be able to both (a) test and (b) run the target.
 _bazel-test() { _bazel test "$@" && _bazel run "$@"; }
 _readlink() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' ${1}; }
+list_rm() {
+    f_rm=${1}
+    shift
+    for f in "$@"; do
+        if [[ ${f} != ${f_rm} ]]; then
+            echo ${f}
+        fi
+    done
+}
 
 # Follow `WORKFLOWS.md`
-mock_dir=${PWD}/bazel_external_data_mock
+mock_dir=/tmp/bazel_external_data/bazel_external_data_mock
 
 # TODO: Prevent this from running outside of Bazel.
 
@@ -205,5 +215,45 @@ rm new.bin
 find . -name '*.sha512' | xargs ../tools/external_data download --check_file=only
 # --check_file=only should not have written a new file.
 [[ ! -f new.bin ]]
+
+
+# Test in `data/`
+cd ../data/
+
+# Remove any *.bin files that may have been from the original folder.
+find . -name '*.bin' | xargs rm
+
+# @note We must pre-download `basic.bin` to cache it so that `package/basic.bin` is valid.
+# @note We must also pre-download `direct.bin` since it's download is Bazel-specific.
+_bazel build :basic.bin :direct.bin
+
+# Ensure that we can download all files here (without --check_file).
+find . -name '*.sha512' | xargs ../tools/external_data download
+
+../tools/external_data download --check_file=only ./package/extra.bin.sha512
+# Ensure that 'package/basic.bin' is invalid with --check_file.
+! ../tools/external_data download --check_file=only ./package/basic.bin.sha512
+# Same for `direct.bin`, when not consumed in Bazel.
+! ../tools/external_data download --check_file=only ./package/direct.bin.sha512
+
+# Now enable `check_file` in Bazel, and ensure that everything passes, since
+# all files defined in Bazel are covered by the remote structures.
+sed -i 's#check_file = False,#check_file = True,#g' ../tools/external_data.bzl
+cat ../tools/external_data.bzl
+
+_bazel build :data
+
+# Now add a bad (but cached) file from our original setup.
+# - Add it to the glob setup to ensure that it gets pulled into Bazel.
+[[ ! -f new.bin.sha512 ]]
+[[ ! -f new.bin ]]
+cp ../data_new/new.bin.sha512 glob_4.bin.sha512
+# - Ensure that we can download the cached version of it.
+../tools/external_data download glob_4.bin.sha512
+diff glob_4.bin ../data_new/expected.txt > /dev/null
+# - Now check via command-line that it fails.
+../tools/external_data download --check_file=only ./glob_4.bin.sha512
+# - Now ensure that Bazel fails when building the file.
+! _bazel build :data
 
 echo "[ Done ]"
