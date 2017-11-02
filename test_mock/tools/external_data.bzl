@@ -1,3 +1,4 @@
+# We will inject additional settings here.
 load("@org_drake_bazel_external_data//tools:macros.bzl",
     _external_data="external_data",
     _external_data_group="external_data_group",
@@ -6,8 +7,11 @@ load("@org_drake_bazel_external_data//tools:macros.bzl",
 
 SETTINGS = dict(
     verbose = False,
+    extra_data = [
+        "//:external_data_sentinel",
+        "//tools:external_data.user.yml",
+    ],
     extra_args = "--user_config $(location //tools:external_data.user.yml)",
-    extra_data = ['//tools:external_data.user.yml'],
 )
 
 def external_data(*args, **kwargs):

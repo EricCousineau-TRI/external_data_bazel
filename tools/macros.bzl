@@ -1,19 +1,22 @@
 SETTINGS_DEFAULT = dict(
+    # Warn if in development mode (e.g. if files will be lost when pushing).
     enable_warn = True,
+    # Verbosity: Will dump configuration, including user information (e.g. API keys!).
     verbose = False,
+    # Check file: Rather than just relying on the cache, this will check that the file
+    # actually exists in the given remote. This is an integrity check.
     check_file = False,
+    # Extra data. Generally, this is just the sentinel data (so we can detect the project
+    # root). However, any custom configuration modules can be included here as well.
+    extra_data = ["//:external_data_sentinel"],
+    # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
+    # be changed.
     extra_args = "",
-    sentinel = "//:external_data_sentinel",
-    extra_data = [],
 )
 
 SHA_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 
-# TODO(eric.cousineau): If this is made into a Bazel external, we can specify a different
-# `tool`.
-# Downstream projects can call these as implementation methods, so that way they can fold
-# in their own configurations / project sentinels.
 
 def external_data(file, mode='normal', url=None, visibility=None,
                   settings=SETTINGS_DEFAULT):
@@ -29,8 +32,9 @@ def external_data(file, mode='normal', url=None, visibility=None,
         If this is just a file that `curl` can fetch, specify this URL.
         If `None`, this will use the `.bazel_external_project` configuration files to]
         determine how to fetch the file.
-    data:
-        Any additional data needed to execute the download command (e.g. configuration files).
+    settings:
+        Settings for the given repository (or even individual target).
+        @see SETTINGS_DEFAULT.
     """
     # Overlay.
     # TODO: Check for invalid settings?
@@ -92,21 +96,21 @@ def external_data(file, mode='normal', url=None, visibility=None,
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
-        sentinel = settings['sentinel']
         extra_data = settings['extra_data']
-        # NOTE: This could be set to `glob([PACKAGE_CONFIG_FILE])` or something of that extent;
-        # this could potentially include glob-visibile sub-package config files.
-        # HOWEVER, this would not include parent files... So we have to keep the weird project root
-        # setup going...
+
+        # package_config_files = _find_package_config_files(sha_file)
+        # NOTE: This above can include glob-visibile sub-package config files.
+        # HOWEVER, this would not include parent files, so we would have to either
+        # (a) explicitly declare those files or (b) keep the odd root_alternatives setup.
+        # (b) is simpler, and does not matter since dirtiness should be due to hash
+        # changing, not the remote changing.
         # Example: In package "x", sha_file = "a/test.bin.sha512" *could* find
         # ["//x:.config_file", "//x/a:.config_file"].
         # However, it would NOT find ["//:.config_file"].
-        # package_config_files = _find_package_config_files(sha_file)
-        data = [sentinel] + extra_data
 
         native.genrule(
             name = name,
-            srcs = [sha_file] + data,
+            srcs = [sha_file] + extra_data,
             outs = [file],
             cmd = cmd,
             tools = [tool],
