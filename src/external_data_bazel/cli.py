@@ -5,8 +5,8 @@ import os
 import yaml
 import argparse
 
-from bazel_external_data import base, util, config_helpers
-from bazel_external_data import download, upload
+from external_data_bazel import base, util, config_helpers
+from external_data_bazel import download, upload
 
 assert __name__ == '__main__'
 

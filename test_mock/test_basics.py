@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from bazel_external_data.util import subshell
+from external_data_bazel.util import subshell
 
 expected_files = {
     "backend_root": [

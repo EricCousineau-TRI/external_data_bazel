@@ -12,7 +12,7 @@ import argparse
 
 from datetime import datetime
 
-from bazel_external_data import base, util
+from external_data_bazel import base, util
 
 SHA_SUFFIX = base.SHA_SUFFIX
 

@@ -4,7 +4,7 @@ import os
 import yaml
 import argparse
 
-from bazel_external_data import base, util, config_helpers
+from external_data_bazel import base, util, config_helpers
 
 SHA_SUFFIX = base.SHA_SUFFIX
 

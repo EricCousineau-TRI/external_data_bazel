@@ -20,7 +20,7 @@ list_rm() {
 should_fail() { eecho "Should have failed!"; exit 1; }
 
 # Follow `WORKFLOWS.md`
-mock_dir=/tmp/bazel_external_data/bazel_external_data_mock
+mock_dir=/tmp/external_data_bazel/bazel_external_data_mock
 
 # TODO: Prevent this from running outside of Bazel.
 
@@ -43,9 +43,9 @@ rmsy() {
 }
 
 # This is only important when running this test via `bazel run`.
-cache_dir=/tmp/bazel_external_data/test_cache
+cache_dir=/tmp/external_data_bazel/test_cache
 rmsy ${cache_dir}
-upload_dir=/tmp/bazel_external_data/upload
+upload_dir=/tmp/external_data_bazel/upload
 rmsy ${upload_dir}
 
 # Start modifying.

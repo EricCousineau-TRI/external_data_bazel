@@ -2,12 +2,12 @@ package(default_visibility = ["//visibility:public"])
 
 alias(
     name = "base",
-    actual = "//src/bazel_external_data:base",
+    actual = "//src/external_data_bazel:base",
 )
 
 alias(
     name = "cli",
-    actual = "//src/bazel_external_data:cli",
+    actual = "//src/external_data_bazel:cli",
 )
 
 filegroup(

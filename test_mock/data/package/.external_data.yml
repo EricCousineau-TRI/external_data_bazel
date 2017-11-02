@@ -4,4 +4,4 @@ remotes:
     test_child:
         backend: mock
         dir: mock/backend_child
-        upload_dir: /tmp/bazel_external_data/upload
+        upload_dir: /tmp/external_data_bazel/upload

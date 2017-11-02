@@ -2,10 +2,10 @@ import os
 import yaml
 import copy
 
-from bazel_external_data import util
+from external_data_bazel import util
 
-# Helpers for configuration finding, specific to (a) general `bazel_external_data` configuration
-# and (b) Bazel path obfuscation reversal within `bazel_external_data`.
+# Helpers for configuration finding, specific to (a) general `external_data_bazel` configuration
+# and (b) Bazel path obfuscation reversal within `external_data_bazel`.
 
 def guess_start_dir(filepath):
     """ Guess the starting directory for a filepath.

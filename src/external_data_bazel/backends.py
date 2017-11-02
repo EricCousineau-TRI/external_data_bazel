@@ -1,8 +1,8 @@
 import json
 import os
 
-from bazel_external_data import util
-from bazel_external_data.base import Backend
+from external_data_bazel import util
+from external_data_bazel.base import Backend
 
 # TODO(eric.cousineau): Consider implementing LFS protocol?
 

@@ -1,12 +1,12 @@
 import os
 
-from bazel_external_data import util, config_helpers
+from external_data_bazel import util, config_helpers
 
 SHA_SUFFIX = '.sha512'
 PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
 PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
-USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
-CACHE_DIR_DEFAULT = "~/.cache/bazel_external_data"
+USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
+CACHE_DIR_DEFAULT = "~/.cache/external_data_bazel"
 SENTINEL_DEFAULT = 'WORKSPACE'
 USER_CONFIG_DEFAULT = {
     "core": {
@@ -381,7 +381,7 @@ def load_project(guess_filepath, user_config_in = None):
 
     project_config = _load_project_config(guess_filepath)
 
-    from bazel_external_data.backends import get_default_backends
+    from external_data_bazel.backends import get_default_backends
     setup_config_py = project_config.get('setup_config_py')
     if setup_config_py:
         setup_config = {}
