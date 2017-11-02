@@ -9,3 +9,19 @@ alias(
     name = "cli",
     actual = "//src/bazel_external_data:cli",
 )
+
+# exports_files(
+#     ["."],
+#     visibility = ["//test_workflow:__subpackages__"],
+# )
+
+filegroup(
+    name = "dir",
+    srcs = [
+        "src",
+        "tools",
+        "WORKSPACE",
+        "BUILD.bazel"
+    ],
+    visibility = ["//test_workflow:__subpackages__"],
+)
