@@ -87,7 +87,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
             # The cache files are made read-only, so even if a test is run
             # with `--spawn_strategy=standalone`, there should be a permission error
             # when attempting to write to the file.
-            cmd += "--symlink_from_cache "
+            cmd += "--symlink "
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.

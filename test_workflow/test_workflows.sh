@@ -172,7 +172,7 @@ rm new.bin
 _bazel-test :test_basics
 
 # Download and check the file, but as a symlink now.
-../tools/external_data download --symlink_from_cache ./new.bin.sha512
+../tools/external_data download --symlink ./new.bin.sha512
 [[ -L new.bin ]]
 diff new.bin expected.txt > /dev/null
 
