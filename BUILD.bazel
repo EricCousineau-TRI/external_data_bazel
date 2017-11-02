@@ -6,11 +6,6 @@ alias(
 )
 
 alias(
-    name = "download",
-    actual = "//src/bazel_external_data:download",
-)
-
-alias(
-    name = "upload",
-    actual = "//src/bazel_external_data:upload",
+    name = "cli",
+    actual = "//src/bazel_external_data:cli",
 )

@@ -7,9 +7,8 @@ load("@org_drake_bazel_external_data//tools:macros.bzl",
 SETTINGS = struct(
     ENABLE_WARN = True,
     VERBOSE = False,
-    DEBUG_CONFIG = False,
     CHECK_FILE = False,
-    EXTRA_ARGS = "--user_config=$(location //tools:external_data.user.yml)",
+    EXTRA_ARGS = "--user_config $(location //tools:external_data.user.yml)",
 )
 
 KWARGS = {

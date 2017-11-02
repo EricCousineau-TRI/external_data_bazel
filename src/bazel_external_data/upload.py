@@ -15,13 +15,28 @@ from datetime import datetime
 
 from bazel_external_data import base, util
 
-if util.in_bazel_runfiles():
-    util.eprint("ERROR: Do not run this command via `bazel run`.")
-    exit(1)
-
 SHA_SUFFIX = base.SHA_SUFFIX
 
-def upload(project, filepath):
+
+def add_arguments(parser):
+    parser.add_argument('filepaths', type=str, nargs='+')
+
+
+def run(args, project, remote_in):
+    for filepath in args.filepaths:
+        def action():
+            do_upload(project, filepath, remote_in)
+        if args.keep_going:
+            try:
+                action()
+            except RuntimeError as e:
+                util.eprint(e)
+                util.eprint("Continuing (--keep_going).")
+        else:
+            action()
+
+
+def do_upload(project, filepath, remote_in):
     if not os.path.isabs(filepath):
         raise RuntimeError("Must supply absolute path: {}".format(filepath))
     filepath = os.path.abspath(filepath)
@@ -29,7 +44,10 @@ def upload(project, filepath):
         filepath_guess = filepath[:-len(SHA_SUFFIX)]
         raise RuntimeError("Input file is a SHA file. Did you mean to upload '{}' instead?".format(filepath_guess))
 
-    remote = project.load_remote(filepath)
+    if remote_in:
+        remote = remote_in
+    else:
+        remote = project.load_remote(filepath)
     sha = remote.upload_file(filepath)
 
     # Write SHA512
@@ -39,17 +57,3 @@ def upload(project, filepath):
         fd.write(sha + "\n")
 
     print("[ Done ]")
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filepaths', type=str, nargs='+')
-    args = parser.parse_args()
-
-    project = base.load_project(os.getcwd())
-    for filepath in args.filepaths:
-        upload(project, filepath)
-
-
-if __name__ == '__main__':
-    main()

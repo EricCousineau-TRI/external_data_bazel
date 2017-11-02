@@ -10,17 +10,13 @@ py_library(
     visibility=["//visibility:public"],
 )
 
-# TODO: Combine these in some sort of dispatch binary?
 py_binary(
-    name = "download",
-    srcs = ["download.py"],
-    deps = [":base"],
-    visibility=["//visibility:public"],
-)
-
-py_binary(
-    name = "upload",
-    srcs = ["upload.py"],
+    name = "cli",
+    srcs = [
+        "cli.py",
+        "download.py",
+        "upload.py",
+    ],
     deps = [":base"],
     visibility=["//visibility:public"],
 )

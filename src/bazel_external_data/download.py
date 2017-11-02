@@ -11,56 +11,50 @@ import argparse
 
 from bazel_external_data import base, util, config_helpers
 
-if util.in_bazel_runfiles():
-    util.eprint("ERROR: Do not run this command via `bazel run`.")
-    exit(1)
-
-assert __name__ == "__main__"
-
 SHA_SUFFIX = base.SHA_SUFFIX
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
-parser = argparse.ArgumentParser()
-# TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
-parser.add_argument('-o', '--output', dest='output_file', type=str,
-                    help='Output destination. If specified, only one input file may be provided.')
-parser.add_argument('sha_files', type=str, nargs='+',
-                    help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
+def add_arguments(parser):
+    # TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
+    parser.add_argument('-o', '--output', dest='output_file', type=str,
+                        help='Output destination. If specified, only one input file may be provided.')
+    parser.add_argument('sha_files', type=str, nargs='+',
+                        help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
-parser.add_argument('-k', '--keep_going', action='store_true',
-                    help='Attempt to keep going.')
-parser.add_argument('-f', '--force', action='store_true',
-                    help='Overwrite existing output file.')
+    parser.add_argument('-f', '--force', action='store_true',
+                        help='Overwrite existing output file.')
 
-parser.add_argument('--project_root_guess', type=str, default='.',
-                    help='File path to guess the project root.')
-parser.add_argument('--user_config', type=str, default=None,
-                    help='Override user configuration (useful for testing).')
+    parser.add_argument('--no_cache', action='store_true',
+                        help='Always download, and do not cache the result.')
+    parser.add_argument('--symlink_from_cache', action='store_true',
+                        help='Use a symlink from the cache rather than copying the file.')
+    parser.add_argument('--allow_relpath', action='store_true',
+                        help='Permit relative paths. Having this on by default makes using Bazel simpler.')
+    parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
+                        help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
+                             + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 
-parser.add_argument('--no_cache', action='store_true',
-                    help='Always download, and do not cache the result.')
-parser.add_argument('--symlink_from_cache', action='store_true',
-                    help='Use a symlink from the cache rather than copying the file.')
-parser.add_argument('--allow_relpath', action='store_true',
-                    help='Permit relative paths. Having this on by default makes using Bazel simpler.')
-parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
-                    help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
-                         + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
-parser.add_argument('--remote', type=str, default=None,
-                    help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
-parser.add_argument('-v', '--verbose', action='store_true',
-                    help='Dump configuration and show command-line arguments. WARNING: Will print out information in user configuration (e.g. keys) as well!')
+def run(args, project, remote_in):
+    if args.output_file:
+        if len(args.sha_files) != 1:
+            raise RuntimeError("Can only specify one input file with --output")
+        do_download(args, project, args.sha_files[0], args.output_file, remote_in=remote_in)
+    else:
+        for sha_file in args.sha_files:
+            output_file = sha_file[:-len(SHA_SUFFIX)]
+            def action():
+                do_download(args, project, sha_file, output_file, remote_in=remote_in)
+            if args.keep_going:
+                try:
+                    action()
+                except RuntimeError as e:
+                    util.eprint(e)
+                    util.eprint("Continuing (--keep_going).")
+            else:
+                action()
 
-args = parser.parse_args()
-
-if args.verbose:
-    util.eprint("cmdline:")
-    util.eprint("  pwd: {}".format(os.getcwd()))
-    util.eprint("  argv[0]: {}".format(sys.argv[0]))
-    util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
-
-def do_download(project, sha_file, output_file, remote_in=None):
+def do_download(args, project, sha_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
     if not args.allow_relpath:
         files = [sha_file, output_file]
@@ -114,35 +108,3 @@ def do_download(project, sha_file, output_file, remote_in=None):
         sha, output_file,
         use_cache=use_cache,
         symlink_from_cache=args.symlink_from_cache)
-
-user_config = None
-if args.user_config is not None:
-    user_config = config_helpers.parse_config_file(args.user_config)
-
-project = base.load_project(os.path.abspath(args.project_root_guess), user_config)
-if args.verbose:
-    yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
-    yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
-
-remote_in = None
-if args.remote:
-    remote_config = yaml.load(args.remote)
-    remote_in = project.load_remote_command_line(remote_config)
-
-if args.output_file:
-    if len(args.sha_files) != 1:
-        raise RuntimeError("Can only specify one input file with --output")
-    do_download(project, args.sha_files[0], args.output_file, remote_in=remote_in)
-else:
-    for sha_file in args.sha_files:
-        output_file = sha_file[:-len(SHA_SUFFIX)]
-        def action():
-            do_download(project, sha_file, output_file, remote_in=remote_in)
-        if args.keep_going:
-            try:
-                action()
-            except RuntimeError as e:
-                util.eprint(e)
-                util.eprint("Continuing (--keep_going).")
-        else:
-            action()

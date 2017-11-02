@@ -29,6 +29,8 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
         If this is just a file that `curl` can fetch, specify this URL.
         If `None`, this will use the `.bazel_external_project` configuration files to]
         determine how to fetch the file.
+    data:
+        Any additional data needed to execute the download command (e.g. configuration files).
     """
 
     # Cannot access environment for this file...
@@ -53,7 +55,7 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
     elif mode in ['normal', 'no_cache']:
         name = "{}__download".format(file)
         sha_file = file + SHA_SUFFIX
-        tool = "@org_drake_bazel_external_data//:download"
+        tool = "@org_drake_bazel_external_data//:cli"
 
         # Binary:
         cmd = "$(location {}) ".format(tool)
@@ -64,6 +66,16 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
         # consumed by a downstream Bazel project.
         # (Otherwise, PWD will point to downstream project, which will make a conflict.)
         cmd += "--project_root_guess=$(location {}) ".format(sha_file)
+        # Argument: Specific URL.
+        if url:
+            # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
+            cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
+        # Extra Arguments (for project settings).
+        extra_args = getattr(settings, 'EXTRA_ARGS', None)
+        if extra_args:
+            cmd += extra_args + " "
+        # Subcommand: Download.
+        cmd += "download "
         # Argument: Ensure that we can permit relative paths.
         cmd += "--allow_relpath "
         # Argument: Caching.
@@ -75,19 +87,12 @@ def external_data(file, mode='normal', url=None, visibility=None, settings=SETTI
             # with `--spawn_strategy=standalone`, there should be a permission error
             # when attempting to write to the file.
             cmd += "--symlink_from_cache "
-        # Argument: Specific URL.
-        if url:
-            # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
-            cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
         # Argument: SHA file or SHA.
         cmd += "$(location {}) ".format(sha_file)
         # Argument: Output file.
         cmd += "--output $@ "
         if settings.CHECK_FILE:
             cmd += "--check_file=extra "
-        extra_args = getattr(settings, 'EXTRA_ARGS', None)
-        if extra_args:
-            cmd += extra_args + " "
 
         if settings.VERBOSE:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
