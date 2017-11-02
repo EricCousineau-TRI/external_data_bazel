@@ -1,13 +1,24 @@
 #!/bin/bash
+set -e -u
 
 # Follow `WORKFLOWS.md`
-pwd
-cd test_workflow
-ls -l
-ln -s .. bazel_external_data
-mkdir test_mock
-cp -r test_mock_orig/* test_mock/
-cd test_mock
+mock_dir=$PWD/bazel_external_data_mock
+
+# TODO: Prevent this from running outside of Bazel.
+
+# Copy what's needed for modifiable `test_mock` directory.
+srcs="src tools test_mock BUILD.bazel WORKSPACE"
+rm -rf ${mock_dir}
+mkdir ${mock_dir}
+for src in ${srcs}; do
+    cp -r $(readlink ${src}) ${mock_dir}
+done
+
+cd ${mock_dir}/test_mock
+# Clean workspace.
+find data/ -name '*.bin' | xargs rm
+
+find . -type f
 
 bazel run //:test_basics
 

@@ -10,16 +10,12 @@ alias(
     actual = "//src/bazel_external_data:cli",
 )
 
-# exports_files(
-#     ["."],
-#     visibility = ["//test_workflow:__subpackages__"],
-# )
-
 filegroup(
-    name = "dir",
+    name = "workflow_mock",
     srcs = [
         "src",
         "tools",
+        "test_mock",
         "WORKSPACE",
         "BUILD.bazel"
     ],
