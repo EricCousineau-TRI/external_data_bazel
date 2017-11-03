@@ -17,7 +17,7 @@ SETTINGS_DEFAULT = dict(
 )
 
 
-SHA_SUFFIX = ".sha512"
+HASH_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 
 
@@ -50,14 +50,14 @@ def external_data(file, mode='normal', url=None, visibility=None,
             # TODO(eric.cousineau): Print full location of given file?
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +
                   "\n  Using local workspace file in development mode." +
-                  "\n  Please upload this file and commit the *{} file.".format(SHA_SUFFIX))
+                  "\n  Please upload this file and commit the *{} file.".format(HASH_SUFFIX))
         native.exports_files(
             srcs = [file],
             visibility = visibility,
         )
     elif mode in ['normal', 'no_cache']:
         name = "{}__download".format(file)
-        hash_file = file + SHA_SUFFIX
+        hash_file = file + HASH_SUFFIX
         tool = "@external_data_bazel_pkg//:cli"
 
         # Binary:
@@ -88,7 +88,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
             # with `--spawn_strategy=standalone`, there should be a permission error
             # when attempting to write to the file.
             cmd += "--symlink "
-        # Argument: SHA file or SHA.
+        # Argument: Hash file.
         cmd += "$(location {}) ".format(hash_file)
         # Argument: Output file.
         cmd += "--output $@ "
@@ -155,7 +155,7 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +
               "  If you remove `files_devel`, then these files will not be part of the target.\n" +
-              "  If you are using a `glob`, they may not have a corresponding *{} file\n".format(SHA_SUFFIX))
+              "  If you are using a `glob`, they may not have a corresponding *{} file\n".format(HASH_SUFFIX))
 
     all_files = files + devel_only
     native.filegroup(
@@ -167,9 +167,9 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
 def get_original_files(hash_files):
     files = []
     for hash_file in hash_files:
-        if not hash_file.endswith(SHA_SUFFIX):
-            fail("SHA file does end with '{}': '{}'".format(SHA_SUFFIX, hash_file))
-        file = hash_file[:-len(SHA_SUFFIX)]
+        if not hash_file.endswith(HASH_SUFFIX):
+            fail("Hash file does end with '{}': '{}'".format(HASH_SUFFIX, hash_file))
+        file = hash_file[:-len(HASH_SUFFIX)]
         files.append(file)
     return files
 

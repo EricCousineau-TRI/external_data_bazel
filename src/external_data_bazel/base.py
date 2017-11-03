@@ -2,7 +2,7 @@ import os
 
 from external_data_bazel import util, config_helpers
 
-SHA_SUFFIX = '.sha512'
+HASH_SUFFIX = '.sha512'
 PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
 PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
@@ -16,7 +16,7 @@ USER_CONFIG_DEFAULT = {
 
 
 class Backend(object):
-    """ Downloads or uploads a file from a given storage mechanism given the SHA file.
+    """ Downloads or uploads a file from a given storage mechanism given the hash file.
     This also has access to the project to determine project name, file relative paths
     (if applicable), etc. """
     def __init__(self, config, project):
@@ -28,7 +28,7 @@ class Backend(object):
         raise NotImplemented()
 
     def download_file(self, hash, project_relpath, output_path):
-        """ Downloads a file from a given SHA to a given output path.
+        """ Downloads a file from a given hash to a given output path.
         @param project_relpath
             File path relative to project. May be None, depending on
             how this is used (e.g. via CMake/ExternalData). """
@@ -38,7 +38,7 @@ class Backend(object):
         """ Uploads a file from an output path given a SHA.
         @param project_relpath
             Same as for `download_file`, but must not be None.
-        @note This SHA should be assumed to be valid. """
+        @note This hash should be assumed to be valid. """
         raise RuntimeError("Uploading not supported for this backend")
 
 
@@ -151,7 +151,7 @@ class Remote(object):
 
     def upload_file(self, filepath, project_relpath):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
-        and updates the corresponding SHA file. """
+        and updates the corresponding hash file. """
         assert os.path.isabs(filepath)
         hash = util.compute_hash(filepath)
         if self._backend.has_file(hash, project_relpath):
@@ -211,7 +211,7 @@ class Package(object):
             return remote
 
     def get_sha_cache_path(self, hash, create_dir=False):
-        """ Get the cache path for a given SHA file for the given package.
+        """ Get the cache path for a given hash file for the given package.
         Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
         a = hash[0:2]
@@ -411,5 +411,5 @@ def load_project(guess_filepath, user_config_in = None):
     return project
 
 def strip_hash(filepath):
-    assert filepath.endswith(SHA_SUFFIX)
-    return filepath[:-len(SHA_SUFFIX)]
+    assert filepath.endswith(HASH_SUFFIX)
+    return filepath[:-len(HASH_SUFFIX)]

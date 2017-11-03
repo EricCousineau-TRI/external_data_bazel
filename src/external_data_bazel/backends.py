@@ -5,7 +5,7 @@ from external_data_bazel import util
 from external_data_bazel.base import Backend
 
 # TODO(eric.cousineau): Consider implementing Git LFS protocol as a backend for pure
-# SHA files (for migration, if needed).
+# Hash files (for migration, if needed).
 
 # TODO(eric.cousineau): Given that Backend supports a `project_relpath`, consider adding
 # git-lfs or git-annex clients as potential backends.
@@ -154,7 +154,7 @@ class GirderBackend(Backend):
         return args
 
     def has_file(self, hash, project_relpath):
-        """ Returns true if the given SHA exists on the given server. """
+        """ Returns true if the given hash exists on the given server. """
         # TODO(eric.cousineau): Is there a quicker way to do this???
         # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
         # This is necessary if we have users with the same file?

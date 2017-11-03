@@ -74,7 +74,7 @@ test.
 
 Let's say you've removed `dragon.obj` from `:/data`, but a month later you wish to revise it. To update the file:
 
-1. Download the corresponding SHA file:
+1. Download the corresponding hash file:
 
         cd data
         bazel run //tools/external_data:download -- ~+/dragon.obj.sha512

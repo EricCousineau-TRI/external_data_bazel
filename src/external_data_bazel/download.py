@@ -6,7 +6,7 @@ import argparse
 
 from external_data_bazel import base, util, config_helpers
 
-SHA_SUFFIX = base.SHA_SUFFIX
+HASH_SUFFIX = base.HASH_SUFFIX
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
@@ -35,7 +35,7 @@ def run(args, project, remote_in):
         do_download(args, project, args.hash_files[0], args.output_file, remote_in=remote_in)
     else:
         for hash_file in args.hash_files:
-            output_file = hash_file[:-len(SHA_SUFFIX)]
+            output_file = hash_file[:-len(HASH_SUFFIX)]
             def action():
                 do_download(args, project, hash_file, output_file, remote_in=remote_in)
             if args.keep_going:
@@ -60,8 +60,8 @@ def do_download(args, project, hash_file, output_file, remote_in=None):
     # Get the hash.
     if not os.path.isfile(hash_file):
         raise RuntimeError("ERROR: File not found: {}".format(hash_file))
-    if not hash_file.endswith(SHA_SUFFIX):
-        raise RuntimeError("ERROR: File does not end with '{}': '{}'".format(SHA_SUFFIX, hash_file))
+    if not hash_file.endswith(HASH_SUFFIX):
+        raise RuntimeError("ERROR: File does not end with '{}': '{}'".format(HASH_SUFFIX, hash_file))
     hash = util.subshell("cat {}".format(hash_file))
     use_cache = not args.no_cache
 

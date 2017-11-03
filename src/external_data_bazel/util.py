@@ -38,7 +38,7 @@ def compute_hash(filepath):
 
 
 def check_hash(hash_expected, filepath, do_throw=True):
-    """ Check if a file has an expected SHA """
+    """ Check if a file has an expected hash """
     hash = compute_hash(filepath)
     if hash != hash_expected:
         if do_throw:
