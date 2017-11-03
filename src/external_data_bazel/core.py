@@ -396,12 +396,24 @@ def load_project(guess_filepath, user_config_in = None):
 
     project_config = _load_project_config(guess_filepath)
 
-    setup_config_py = project_config.get('setup_config_py')
+    setup_config_file_relpath = project_config.get('setup_config')
     get_backends = None
-    if setup_config_py:
-        setup_config = {}
-        with open(os.path.join(project_config['root'], setup_config_py)) as f:
-            exec(f.read(), globals(), setup_config)
+    if setup_config_file_relpath:
+        setup_config_file = os.path.join(project_config['root'], setup_config_file_relpath)
+        setup_config = {
+            '__file__': setup_config_file,
+            '__module__': None,
+            '__project_root__': project_config['root'],
+        }
+        with open(setup_config_file) as f:
+            # TODO: Figure out how to pass filename for error handling?
+            try:
+                exec(f.read(), globals(), setup_config)
+            except Exception as e:
+                util.eprint("ERROR: Could not execute project's 'setup_config'")
+                util.eprint("  File: {}".format(setup_config_file))
+                import traceback
+                traceback.print_exc()
         get_backends = setup_config.get('get_backends')
     if get_backends is None:
         from external_data_bazel.backends import get_default_backends
