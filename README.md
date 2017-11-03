@@ -1,3 +1,11 @@
+# WARNING
+
+This is a prototype, and the API / documentation has not yet stablized.
+Additionally, the present commits will be rebased, so Git history will not be
+connected.
+
+Please do not use this yet.
+
 # About
 
 This is a Bazel-centric implementation for incorporating external data into the workspace (not to be versioned in Git, etc.) for testing and running binaries.
