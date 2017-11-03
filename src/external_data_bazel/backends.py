@@ -33,7 +33,7 @@ class MockBackend(Backend):
             for file in os.listdir(cur_dir):
                 filepath = os.path.join(cur_dir, file)
                 if os.path.isfile(filepath):
-                    hash = util.compute_sha(filepath)
+                    hash = util.compute_hash(filepath)
                     self._map[hash] = filepath
         crawl(self._dir)
         if os.path.exists(self._upload_dir):
@@ -49,7 +49,7 @@ class MockBackend(Backend):
         util.subshell(['cp', filepath, output_file])
 
     def upload_file(self, hash, project_relpath, filepath):
-        hash = util.compute_sha(filepath)
+        hash = util.compute_hash(filepath)
         assert hash not in self._map
         if not os.path.isdir(self._upload_dir):
             os.makedirs(self._upload_dir)

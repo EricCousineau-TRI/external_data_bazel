@@ -57,7 +57,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
         )
     elif mode in ['normal', 'no_cache']:
         name = "{}__download".format(file)
-        sha_file = file + SHA_SUFFIX
+        hash_file = file + SHA_SUFFIX
         tool = "@external_data_bazel_pkg//:cli"
 
         # Binary:
@@ -68,7 +68,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
         # Argument: Project root. Guess from the input file rather than PWD, so that a file could
         # consumed by a downstream Bazel project.
         # (Otherwise, PWD will point to downstream project, which will make a conflict.)
-        cmd += "--project_root_guess=$(location {}) ".format(sha_file)
+        cmd += "--project_root_guess=$(location {}) ".format(hash_file)
         # Argument: Specific URL.
         if url:
             # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
@@ -89,7 +89,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
             # when attempting to write to the file.
             cmd += "--symlink "
         # Argument: SHA file or SHA.
-        cmd += "$(location {}) ".format(sha_file)
+        cmd += "$(location {}) ".format(hash_file)
         # Argument: Output file.
         cmd += "--output $@ "
         if settings['check_file']:
@@ -101,19 +101,19 @@ def external_data(file, mode='normal', url=None, visibility=None,
 
         extra_data = settings['extra_data']
 
-        # package_config_files = _find_package_config_files(sha_file)
+        # package_config_files = _find_package_config_files(hash_file)
         # NOTE: This above can include glob-visibile sub-package config files.
         # HOWEVER, this would not include parent files, so we would have to either
         # (a) explicitly declare those files or (b) keep the odd root_alternatives setup.
         # (b) is simpler, and does not matter since dirtiness should be due to hash
         # changing, not the remote changing.
-        # Example: In package "x", sha_file = "a/test.bin.sha512" *could* find
+        # Example: In package "x", hash_file = "a/test.bin.sha512" *could* find
         # ["//x:.config_file", "//x/a:.config_file"].
         # However, it would NOT find ["//:.config_file"].
 
         native.genrule(
             name = name,
-            srcs = [sha_file] + extra_data,
+            srcs = [hash_file] + extra_data,
             outs = [file],
             cmd = cmd,
             tools = [tool],
@@ -164,12 +164,12 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
     )
 
 
-def get_original_files(sha_files):
+def get_original_files(hash_files):
     files = []
-    for sha_file in sha_files:
-        if not sha_file.endswith(SHA_SUFFIX):
-            fail("SHA file does end with '{}': '{}'".format(SHA_SUFFIX, sha_file))
-        file = sha_file[:-len(SHA_SUFFIX)]
+    for hash_file in hash_files:
+        if not hash_file.endswith(SHA_SUFFIX):
+            fail("SHA file does end with '{}': '{}'".format(SHA_SUFFIX, hash_file))
+        file = hash_file[:-len(SHA_SUFFIX)]
         files.append(file)
     return files
 

@@ -100,7 +100,7 @@ As an example in `:/data`:
 
     external_data_group(
         name = "meshes",
-        files = strip_sha(glob(['**/*.obj.sha512'])),
+        files = strip_hash(glob(['**/*.obj.sha512'])),
     )
 
 You may now use `:meshes` in tests to get all of these files.
@@ -122,7 +122,7 @@ Alternatively, you may use `external_data_group(..., files_devel)`, which can si
 
     external_data_group(
         name = "meshes_nondevel",
-        files = strip_sha(glob(['**/*.obj.sha512'])),
+        files = strip_hash(glob(['**/*.obj.sha512'])),
         files_devel = ['robot/to_edit.obj'],
     )
 
@@ -130,7 +130,7 @@ NOTE: You can extend this to use an `*.obj` files in the workspace to assume tha
 
     external_data_group(
         name = "meshes_nondevel",
-        files = strip_sha(glob(['**/*.obj.sha512'])),
+        files = strip_hash(glob(['**/*.obj.sha512'])),
         files_devel = glob(['**/*.obj']),
     )
 

@@ -75,7 +75,7 @@ class Remote(object):
         assert not os.path.exists(output_file)
         try:
             self._backend.download_file(hash, project_relpath, output_file)
-            util.check_sha(hash, output_file)
+            util.check_hash(hash, output_file)
         except util.DownloadError as e:
             if self.has_overlay():
                 # TODO(eric.cousineau): If hierarchical caching is used (for whatever reason), this
@@ -110,7 +110,7 @@ class Remote(object):
                 util.subshell(['chmod', '+w', output_file])
             # On error, remove cached file, and re-download.
             if not skip_sha_check:
-                if not util.check_sha(hash, output_file, do_throw=False):
+                if not util.check_hash(hash, output_file, do_throw=False):
                     util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
                     # `os.remove()` will remove read-only files without prompting.
                     os.remove(cache_path)
@@ -153,7 +153,7 @@ class Remote(object):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
         and updates the corresponding SHA file. """
         assert os.path.isabs(filepath)
-        hash = util.compute_sha(filepath)
+        hash = util.compute_hash(filepath)
         if self._backend.has_file(hash, project_relpath):
             print("File already uploaded")
         else:
@@ -410,6 +410,6 @@ def load_project(guess_filepath, user_config_in = None):
     project.init_root_package(root_package_config)
     return project
 
-def strip_sha(filepath):
+def strip_hash(filepath):
     assert filepath.endswith(SHA_SUFFIX)
     return filepath[:-len(SHA_SUFFIX)]

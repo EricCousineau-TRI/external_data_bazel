@@ -14,7 +14,7 @@ def add_arguments(parser):
     # TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
     parser.add_argument('-o', '--output', dest='output_file', type=str,
                         help='Output destination. If specified, only one input file may be provided.')
-    parser.add_argument('sha_files', type=str, nargs='+',
+    parser.add_argument('hash_files', type=str, nargs='+',
                         help='Files containing the SHA-512 of the desired contents. If --output is not provided, the output destination is inferred from the input path.')
 
     parser.add_argument('-f', '--force', action='store_true',
@@ -30,14 +30,14 @@ def add_arguments(parser):
 
 def run(args, project, remote_in):
     if args.output_file:
-        if len(args.sha_files) != 1:
+        if len(args.hash_files) != 1:
             raise RuntimeError("Can only specify one input file with --output")
-        do_download(args, project, args.sha_files[0], args.output_file, remote_in=remote_in)
+        do_download(args, project, args.hash_files[0], args.output_file, remote_in=remote_in)
     else:
-        for sha_file in args.sha_files:
-            output_file = sha_file[:-len(SHA_SUFFIX)]
+        for hash_file in args.hash_files:
+            output_file = hash_file[:-len(SHA_SUFFIX)]
             def action():
-                do_download(args, project, sha_file, output_file, remote_in=remote_in)
+                do_download(args, project, hash_file, output_file, remote_in=remote_in)
             if args.keep_going:
                 try:
                     action()
@@ -48,32 +48,32 @@ def run(args, project, remote_in):
                 action()
 
 
-def do_download(args, project, sha_file, output_file, remote_in=None):
+def do_download(args, project, hash_file, output_file, remote_in=None):
     # Ensure that we have absolute file paths.
-    sha_file = os.path.abspath(sha_file)
+    hash_file = os.path.abspath(hash_file)
     output_file = os.path.abspath(output_file)
 
     # Get project-relative path. (This will assert if the file is
     # not part of this project).
-    project_relpath = project.get_canonical_path(base.strip_sha(sha_file))
+    project_relpath = project.get_canonical_path(base.strip_hash(hash_file))
 
     # Get the hash.
-    if not os.path.isfile(sha_file):
-        raise RuntimeError("ERROR: File not found: {}".format(sha_file))
-    if not sha_file.endswith(SHA_SUFFIX):
-        raise RuntimeError("ERROR: File does not end with '{}': '{}'".format(SHA_SUFFIX, sha_file))
-    hash = util.subshell("cat {}".format(sha_file))
+    if not os.path.isfile(hash_file):
+        raise RuntimeError("ERROR: File not found: {}".format(hash_file))
+    if not hash_file.endswith(SHA_SUFFIX):
+        raise RuntimeError("ERROR: File does not end with '{}': '{}'".format(SHA_SUFFIX, hash_file))
+    hash = util.subshell("cat {}".format(hash_file))
     use_cache = not args.no_cache
 
     # Common arguments for `format`.
     if remote_in is None:
-        remote = project.load_remote(sha_file)
+        remote = project.load_remote(hash_file)
     else:
         remote = remote_in
 
     def dump_remote_config():
         dump = [{
-            "file": project.get_relpath(sha_file),
+            "file": project.get_relpath(hash_file),
             "remote": project.debug_dump_remote_config(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
@@ -85,7 +85,7 @@ def do_download(args, project, sha_file, output_file, remote_in=None):
         if not remote.has_file(hash, project_relpath):
             if not args.verbose:
                 dump_remote_config()
-            raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, hash))
+            raise RuntimeError("Remote does not have '{}' ({})".format(hash_file, hash))
         if args.check_file == 'only':
             # Skip fetching the file.
             return
