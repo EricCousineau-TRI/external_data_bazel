@@ -3,6 +3,7 @@ import os
 from external_data_bazel import util, config_helpers
 
 HASH_SUFFIX = '.sha512'
+HASH_ALGO = 'sha512'
 PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
 PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
@@ -136,7 +137,7 @@ class Remote(object):
             if self._check_always:
                 if not self.has_file(hash):
                     raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, hash, output_file))
-            cache_path = self.package.get_sha_cache_path(hash, create_dir=True)
+            cache_path = self.package.get_hash_cache_path(hash, create_dir=True)
             # TODO(eric.cousineau): This still isn't atomic, and may encounter a race condition...
             util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
@@ -210,13 +211,12 @@ class Package(object):
             self._remotes[name] = remote
             return remote
 
-    def get_sha_cache_path(self, hash, create_dir=False):
+    def get_hash_cache_path(self, hash, create_dir=False):
         """ Get the cache path for a given hash file for the given package.
         Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
-        a = hash[0:2]
-        b = hash[2:4]
-        out_dir = os.path.join(self._project.user.cache_dir, a, b)
+        out_dir = os.path.join(
+            self._project.user.cache_dir, HASH_ALGO, hash[0:2], hash[2:4])
         if create_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir)
         return os.path.join(out_dir, hash)
