@@ -3,11 +3,11 @@ SETTINGS_DEFAULT = dict(
     enable_warn = True,
     # Verbosity: Will dump configuration, including user information (e.g. API keys!).
     verbose = False,
-    # Extra data. Generally, this is just the sentinel data (so we can detect the project
+    # Tool data. Generally, this is just the sentinel data (so we can detect the project
     # root). However, any custom configuration modules can be included here as well.
     # WARNING: The sentinel MUST be placed next to the workspace root. Logic for non-workspace
     # root files is too complex (and useless).
-    extra_data = ["//:external_data_sentinel"],
+    cli_data = ["//:external_data_sentinel"],
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
     # @note This is NOT for arguments after `cli ... download`.
@@ -106,7 +106,7 @@ def external_data(file, mode='normal', visibility=None,
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
-        extra_data = settings['extra_data']
+        cli_data = settings['cli_data']
 
         # package_config_files = _find_package_config_files(hash_file)
         # NOTE: This above can include glob-visibile sub-package config files.
@@ -120,7 +120,7 @@ def external_data(file, mode='normal', visibility=None,
 
         native.genrule(
             name = name,
-            srcs = [hash_file] + extra_data,
+            srcs = [hash_file] + cli_data,
             outs = [file],
             cmd = cmd,
             tools = [_TOOL],
@@ -188,13 +188,13 @@ def _external_data_test(file, settings):
         "$(location {})".format(hash_file),
     ]
 
-    extra_data = settings['extra_data']
+    cli_data = settings['cli_data']
 
     # Have to use `py_test` to run an existing binary with arguments...
     # Blech.
     native.py_test(
         name = name,
-        data = [hash_file] + extra_data,
+        data = [hash_file] + cli_data,
         srcs = [_TOOL],
         main = _TOOL + ".py",
         deps = ["@external_data_bazel_pkg//:cli_deps"],

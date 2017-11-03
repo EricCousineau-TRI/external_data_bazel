@@ -7,7 +7,7 @@ load("@external_data_bazel_pkg//tools:macros.bzl",
 )
 
 SETTINGS = dict(
-    extra_data = [
+    cli_data = [
         "//:external_data_sentinel",
         "//tools:external_data.user.yml",
         "//tools:external_data_config.py",
