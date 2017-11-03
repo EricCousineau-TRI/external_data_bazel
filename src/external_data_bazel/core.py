@@ -4,6 +4,7 @@ from external_data_bazel import util, config_helpers
 
 HASH_SUFFIX = '.sha512'
 HASH_ALGO = 'sha512'
+REMOTE_SUFFIX = '.remote.yml'
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 PROJECT_CONFIG_FILE = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
@@ -22,6 +23,7 @@ class Backend(object):
     def __init__(self, config, project):
         self.project = project
         self.config = config
+        self.can_upload = False
 
     def has_file(self, hash, project_relpath):
         """ Determines if the storage mechanism has a given SHA. """
@@ -154,6 +156,8 @@ class Remote(object):
         and updates the corresponding hash file. """
         assert os.path.isabs(filepath)
         hash = util.compute_hash(filepath)
+        if not self._backend.can_upload:
+            raise RuntimeError("Backend does not support uploading")
         if self._backend.has_file(hash, project_relpath):
             print("File already uploaded")
         else:
@@ -184,6 +188,18 @@ class Package(object):
         """ @see Project.load_backend """
         return self._project.load_backend(backend_type, config)
 
+    def _load_remote_impl(self, name, remote_config):
+        # Check against dependency cycles.
+        if name in self._remote_is_loading:
+            raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
+        self._remote_is_loading.append(name)
+        # Load remote.
+        remote = Remote(remote_config, name, self)
+        # Update.
+        self._remote_is_loading.remove(name)
+        self._remotes[name] = remote
+        return remote
+
     def load_remote(self, name):
         """ Load a remote for the given package. 
         If the remote does not exist in the given package, the parent packages will be checked.
@@ -198,17 +214,20 @@ class Package(object):
         if name in self._remotes:
             return self._remotes[name]
         else:
-            # Check against dependency cycles.
-            if name in self._remote_is_loading:
-                raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
-            self._remote_is_loading.append(name)
             remote_config = self._remotes_config[name]
-            # Load remote.
-            remote = Remote(remote_config, name, self)
-            # Update.
-            self._remote_is_loading.remove(name)
-            self._remotes[name] = remote
-            return remote
+            return self._load_remote_impl(name, remote_config)
+
+    def load_remote_by_relpath(self, relpath):
+        remote_config_file_rel = relpath + REMOTE_SUFFIX
+        remote_config_file = self._project.get_canonical_path(remote_config_file_rel)
+        if os.path.exists(remote_config_file):
+            # Load remote from the file.
+            remote_config = config_helpers.parse_config_file(remote_config_file)
+            name = remote_config_file_rel
+            new_remote = self._load_remote_impl(name, remote_config)
+            return new_remote
+        else:
+            return self.remote
 
     def get_hash_cache_path(self, hash, create_dir=False):
         """ Get the cache path for a given hash file for the given package.
@@ -297,10 +316,10 @@ class Project(object):
                 return os.path.relpath(filepath, root)
         raise RuntimeError("Path is not a child of given project")
 
-    def get_canonical_path(self, filepath):
+    def get_canonical_path(self, relpath):
         """ Get filepath as an absolute path, ensuring that it is with respect to the canonical project root.
         @ note This should be reading operations only! """
-        relpath = self.get_relpath(filepath)
+        assert not os.path.isabs(relpath)
         return os.path.join(self.root, relpath)
 
     def load_backend(self, backend_type, config):
@@ -308,9 +327,9 @@ class Project(object):
         backend_cls = self._backends[backend_type]
         return backend_cls(config, self)
 
-    def _load_package(self, filepath):
+    def _load_package(self, relpath):
         """ Load the package for the given filepath. """
-        config_files = _find_package_config_files(self, filepath)
+        config_files = _find_package_config_files(self, relpath)
         package = None
         for config_file in config_files:
             config_file_rel = self.get_relpath(config_file)
@@ -324,31 +343,12 @@ class Project(object):
                 self._packages[config_file_rel] = package
         return package
 
-    def load_remote(self, filepath):
+    def load_remote(self, relpath):
         """ Load remote for a given file to either fetch or push a file """
-        return self._load_package(filepath).remote
-
-    def load_remote_command_line(self, remote_config, start_dir=None):
-        """ Load a remote from the command-line (e.g. specifying a URL). """
-        # TODO(eric.cousineau): As an alternative, consider keeping file-specific items
-        # also in the configuration, akin to `.gitattributes` (possibly supporting fnmatch / globs).
-        # For now, that's redundant w.r.t. Bazel's abilities.
-        file_name = '<command_line>'
-        remote_name = 'command_line'
-        assert file_name not in self._packages
-        if start_dir is None:
-            parent = self._root_package
-        else:
-            parent = self._load_package(start_dir)
-        package_config = {
-            'remote': remote_name,
-            'remotes': {
-                remote_name: remote_config,
-            },
-        }
-        package = Package(package_config, self, parent)
-        self._packages[file_name] = package
-        return package.remote
+        assert not os.path.isabs(relpath)
+        assert not relpath.endswith(HASH_SUFFIX)
+        package = self._load_package(relpath)
+        return package.load_remote_by_relpath(relpath)
 
 
 def _load_project_config(guess_filepath):

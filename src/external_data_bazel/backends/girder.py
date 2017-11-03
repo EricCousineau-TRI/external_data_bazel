@@ -22,6 +22,7 @@ class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
+        self.can_upload = True
         self._url = config['url']
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config['folder_id']

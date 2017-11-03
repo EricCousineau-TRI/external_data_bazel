@@ -25,16 +25,16 @@ def add_arguments(parser):
     parser.add_argument('--symlink', action='store_true',
                         help='Use a symlink from the cache rather than copying the file.')
 
-def run(args, project, remote_in):
+def run(args, project):
     if args.output_file:
         if len(args.hash_files) != 1:
             raise RuntimeError("Can only specify one input file with --output")
-        do_download(args, project, args.hash_files[0], args.output_file, remote_in=remote_in)
+        do_download(args, project, args.hash_files[0], args.output_file)
     else:
         for hash_file in args.hash_files:
             output_file = hash_file[:-len(HASH_SUFFIX)]
             def action():
-                do_download(args, project, hash_file, output_file, remote_in=remote_in)
+                do_download(args, project, hash_file, output_file)
             if args.keep_going:
                 try:
                     action()
@@ -45,14 +45,14 @@ def run(args, project, remote_in):
                 action()
 
 
-def do_download(args, project, hash_file, output_file, remote_in=None):
+def do_download(args, project, hash_file, output_file):
     # Ensure that we have absolute file paths.
     hash_file = os.path.abspath(hash_file)
     output_file = os.path.abspath(output_file)
 
     # Get project-relative path. (This will assert if the file is
     # not part of this project).
-    project_relpath = project.get_canonical_path(core.strip_hash(hash_file))
+    project_relpath = project.get_relpath(core.strip_hash(hash_file))
 
     # Get the hash.
     if not os.path.isfile(hash_file):
@@ -62,11 +62,7 @@ def do_download(args, project, hash_file, output_file, remote_in=None):
     hash = util.subshell("cat {}".format(hash_file))
     use_cache = not args.no_cache
 
-    # Common arguments for `format`.
-    if remote_in is None:
-        remote = project.load_remote(hash_file)
-    else:
-        remote = remote_in
+    remote = project.load_remote(project_relpath)
 
     def dump_remote_config():
         dump = [{

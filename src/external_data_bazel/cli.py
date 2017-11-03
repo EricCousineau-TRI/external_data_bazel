@@ -23,8 +23,6 @@ parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='Dump configuration and show command-line arguments. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--remote', type=str, default=None,
-                    help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 
 # Credit here: https://stackoverflow.com/a/10913734/7829525
 subparsers = parser.add_subparsers(dest="command")
@@ -61,18 +59,13 @@ if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
-remote_in = None
-if args.remote:
-    remote_config = yaml.load(args.remote)
-    remote_in = project.load_remote_command_line(remote_config)
-
 # Execute command.
 if args.command == 'download':
-    status = download.run(args, project, remote_in)
+    status = download.run(args, project)
 elif args.command == 'upload':
-    status = upload.run(args, project, remote_in)
+    status = upload.run(args, project)
 elif args.command == "check":
-    status = check.run(args, project, remote_in)
+    status = check.run(args, project)
 
 if status is not None and status is not True:
     util.eprint("Encountered error")

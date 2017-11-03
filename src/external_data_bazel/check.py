@@ -14,11 +14,11 @@ def add_arguments(parser):
     parser.add_argument('hash_files', type=str, nargs='+')
 
 
-def run(args, project, remote_in):
+def run(args, project):
     bad = False
     for hash_file in args.hash_files:
         def action():
-            do_check(args, project, hash_file, remote_in)
+            do_check(args, project, hash_file)
         if args.keep_going:
             try:
                 action()
@@ -34,20 +34,18 @@ def run(args, project, remote_in):
         return True
 
 
-def do_check(args, project, hash_file, remote_in):
+def do_check(args, project, hash_file):
     hash_file = os.path.abspath(hash_file)
     if not hash_file.endswith(HASH_SUFFIX):
         raise RuntimeError("File does not match *{}: {}".format(HASH_SUFFIX, hash_file))
     filepath = hash_file[:-len(HASH_SUFFIX)]
-    project_relpath = project.get_canonical_path(filepath)
+    project_relpath = project.get_relpath(filepath)
 
     with open(hash_file) as fd:
         hash = fd.read().strip()
 
-    if remote_in:
-        remote = remote_in
-    else:
-        remote = project.load_remote(hash_file)
+    print(project_relpath)
+    remote = project.load_remote(project_relpath)
 
     def dump_remote_config():
         dump = [{
