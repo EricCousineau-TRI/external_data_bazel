@@ -3,11 +3,11 @@
 
 import os
 
-tgt_dir = "/tmp/external_data_bazel"
-if not os.path.isdir(tgt_dir):
-    os.path.makedirs(tgt_dir)
+tmp_dir = "/tmp/external_data_bazel"
+if not os.path.isdir(tmp_dir):
+    os.path.makedirs(tmp_dir)
 # Signal that we executed this file.
-with open(os.path.join(tgt_dir, 'config_was_run'), 'w') as f:
+with open(os.path.join(tmp_dir, 'config_was_run'), 'w') as f:
     f.write('1')
 
 assert __file__.endswith('/tools/external_data_config.py')

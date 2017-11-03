@@ -87,6 +87,9 @@ bazel-test :test_basics
 # Now upload the file.
 ../tools/external_data upload ./new.bin
 
+# Since this is using `test_mock`, it should have ran our custom configuration file.
+[[ -f ${tmp_dir}/config_was_run ]]
+
 # Ensure our upload directory has the file (and only this file).
 [[ -d ${upload_dir} ]]
 upload_file=$(find ${upload_dir} -type f)
