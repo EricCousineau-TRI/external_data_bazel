@@ -177,32 +177,6 @@ def _get_external_data_file(rule):
             return name[:-len(_RULE_SUFFIX)]
     return None
 
-def _genrule_test_impl(ctx):
-    ctx.actions.run_shell(
-        outputs  = [],
-        inputs = ctx.attr.data,
-        command = ctx.attr.cmd,
-    )
-
-# Workaround the fact that `sh_test` cannot take a string for a command, and
-# `genrule` cannot be run as test... *sigh*
-_genrule_test = rule(
-    implementation = _genrule_test_impl,
-    attrs = dict(
-        data = attr.label_list(
-            allow_files = True,
-        ),
-        tool = attr.label(
-            executable = True,
-            mandatory = True,
-            cfg = "target",
-        ),
-        cmd = attr.string(mandatory = True,),
-    ),
-    executable = True,
-    test = True,
-)
-
 def _external_data_test(file, rule, settings):
     # This will only be called if the rule is actually downloaded.
     # This test merely checks that this file is indeed available on the remote (ignoring cache).
@@ -231,11 +205,11 @@ def _external_data_test(file, rule, settings):
     extra_data = settings['extra_data']
 
     # TODO: Can this be made a test?
-    _genrule_test(
+    native.sh_test(
         name = name,
         data = [hash_file] + extra_data,
-        cmd = cmd,
-        tool = _TOOL,
+        srcs = [_TOOL],
+        args = ["check", "abc"],
         tags = _TEST_TAGS,
         # Changes `execroot`, and symlinks the files that we need to crawl the directory
         # structure and get hierarchical packages.
