@@ -10,7 +10,7 @@ SETTINGS_DEFAULT = dict(
     extra_data = ["//:external_data_sentinel"],
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
-    extra_args = "",
+    extra_args = [],
 )
 
 
@@ -26,7 +26,23 @@ _TEST_TAGS = ["external_data_test"]
 _TOOL = "@external_data_bazel_pkg//:cli"
 
 
-def external_data(file, mode='normal', url=None, visibility=None,
+def _get_cli_base_args(filepath, settings):
+    args = []
+    # Argument: Verbosity.
+    if settings['verbose']:
+        args.append("--verbose")
+    # Argument: Project root. Guess from the input file rather than PWD, so that a file could
+    # consumed by a downstream Bazel project.
+    # (Otherwise, PWD will point to downstream project, which will make a conflict.)
+    args.append("--project_root_guess=$(location {})".format(filepath))
+    # Extra Arguments (for project settings).
+    extra_args = settings['extra_args']
+    if extra_args:
+        args += extra_args
+    return args
+
+
+def external_data(file, mode='normal', visibility=None,
                   settings=SETTINGS_DEFAULT):
     """
     Macro for defining a large file.
@@ -36,10 +52,6 @@ def external_data(file, mode='normal', url=None, visibility=None,
         'normal' - Use cached file if possible. Otherwise download the file.
         'devel' - Use local workspace (for development).
         'no_cache' - Download the file, do not use the cache.
-    url:
-        If this is just a file that `curl` can fetch, specify this URL.
-        If `None`, this will use the `.bazel_external_project` configuration files to]
-        determine how to fetch the file.
     settings:
         Settings for the given repository (or even individual target).
         @see SETTINGS_DEFAULT.
@@ -65,37 +77,26 @@ def external_data(file, mode='normal', url=None, visibility=None,
         hash_file = file + HASH_SUFFIX
 
         # Binary:
-        cmd = "$(location {}) ".format(_TOOL)
-        # Argument: Verbosity.
-        if settings['verbose']:
-            cmd += "--verbose "
-        # Argument: Project root. Guess from the input file rather than PWD, so that a file could
-        # consumed by a downstream Bazel project.
-        # (Otherwise, PWD will point to downstream project, which will make a conflict.)
-        cmd += "--project_root_guess=$(location {}) ".format(hash_file)
-        # Argument: Specific URL.
-        if url:
-            # TODO(eric.cousineau): Consider removing this, and keeping all config in files.
-            cmd += "--remote='{{backend: url, url: \"{}\"}}' ".format(url)
-        # Extra Arguments (for project settings).
-        extra_args = settings['extra_args']
-        if extra_args:
-            cmd += extra_args + " "
+        args = ["$(location {})".format(_TOOL)]
+        # General commands.
+        args += _get_cli_base_args(hash_file, settings)
         # Subcommand: Download.
-        cmd += "download "
+        args.append("download")
         # Argument: Caching.
         if mode == 'no_cache':
-            cmd += "--no_cache "
+            args.append("--no_cache")
         else:
             # Use symlinking to avoid needing to copy data to sandboxes.
             # The cache files are made read-only, so even if a test is run
             # with `--spawn_strategy=standalone`, there should be a permission error
             # when attempting to write to the file.
-            cmd += "--symlink "
+            args.append("--symlink")
         # Argument: Hash file.
-        cmd += "$(location {}) ".format(hash_file)
+        args.append("$(location {})".format(hash_file))
         # Argument: Output file.
-        cmd += "--output $@ "
+        args.append("--output=$@")
+
+        cmd = " ".join(args)
 
         if settings['verbose']:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
@@ -172,42 +173,18 @@ def _get_external_data_file(rule):
             return name[:-len(_RULE_SUFFIX)]
     return None
 
-def _external_data_test(file, rule, settings):
-    # This will only be called if the rule is actually downloaded.
+def _external_data_test(file, settings):
     # This test merely checks that this file is indeed available on the remote (ignoring cache).
     name = file + _TEST_SUFFIX
     hash_file = file + HASH_SUFFIX
 
-    pieces = rule["cmd"].split(" download ")  # HACK
-    cmd_start = "$(location {}) ".format(_TOOL)
-    if len(pieces) != 2:
-        fail("Internal error")
-
-    if not pieces[0].startswith(cmd_start):
-        fail("Internal error")
-
-    # Same setup (including URL).
-    cmd = pieces[0] #[len(cmd_start):]  # Strip out binary.
-    # Subcommand: Check.
-    cmd += "check "
-    # Argument: Hash file.
-    cmd += "$(location {}) ".format(hash_file)
-
-    extra_data = settings['extra_data']
-
-    args = [
-        "--project_root_guess=$(location {})".format(hash_file),
-    ]
-    if settings['verbose']:
-        args += ['--verbose']
+    args = _get_cli_base_args(hash_file, settings)
     args += [
         "check",
         "$(location {})".format(hash_file),
     ]
 
-    if settings['verbose']:
-        print("\n_external_data_test(file = '{}'):".format(file) +
-              "\n  cmd: {}".format(" ".join([_TOOL] + args)))
+    extra_data = settings['extra_data']
 
     # Have to use `py_test` to run an existing binary with arguments...
     # Blech.
@@ -238,7 +215,7 @@ def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
     for rule in existing_rules.values():
         file = _get_external_data_file(rule)
         if file:
-            tests.append(_external_data_test(file, rule, settings))
+            tests.append(_external_data_test(file, settings))
 
     native.test_suite(
         name = "external_data_tests",

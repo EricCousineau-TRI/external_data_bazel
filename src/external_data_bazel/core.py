@@ -26,7 +26,10 @@ class Backend(object):
         self.can_upload = False
 
     def has_file(self, hash, project_relpath):
-        """ Determines if the storage mechanism has a given SHA. """
+        """ Determines if the storage mechanism has a given SHA.
+        @note It is IMPORTANT that the 'hash' be prioritized.
+            It is OK if 'project_relpath' is not used, but 'hash' must be a critical part
+            of the check!!!"""
         raise NotImplemented()
 
     def download_file(self, hash, project_relpath, output_path):

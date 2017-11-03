@@ -4,16 +4,44 @@ import os
 from external_data_bazel import util
 from external_data_bazel.core import Backend
 
-def _has_file(url):
-    first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
-    bad = ["HTTP/1.1 404 Not Found"]
-    good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
-    if first_line in bad:
-        return False
-    elif first_line in good:
-        return True
+def _check_hash(url, hash_expected):
+    import tempfile
+    class TmpFileName(object):
+        def __init__(self):
+            pass
+        def __enter__(self, *args):
+            self.filepath = tempfile.mkstemp()[1]
+        def get_path(self):
+            return self.filepath
+        def __exit__(self, *args):
+            os.unlink(self.filepath)
+    tmp_file = TmpFileName()
+    with tmp_file:
+        tmp_path = tmp_file.get_path()
+        util.subshell('curl -s -o {} {}'.format(tmp_path, url))
+        hash = util.compute_hash(tmp_path)
+        good = (hash_expected == hash)
+    if not good:
+        util.eprint("WARNING: SHA-512 mismatch for url: {}".format(url))
+        util.eprint("  expected:\n    {}".format(hash_expected))
+        util.eprint("  url:\n    {}".format(hash))
+    return good
+
+def _has_file(url, hash, trusted=False):
+    if not trusted:
+        # Download the full file, and check the hash.
+        return _check_hash(url, hash)
     else:
-        raise RuntimeError("Unknown code: {}".format(first_line))
+        # Just check header.
+        first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
+        bad = ["HTTP/1.1 404 Not Found"]
+        good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
+        if first_line in bad:
+            return False
+        elif first_line in good:
+            return True
+        else:
+            raise RuntimeError("Unknown code: {}".format(first_line))
 
 
 def _download_file(url, output_file):
@@ -25,9 +53,10 @@ class UrlBackend(Backend):
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
         self._url = config['url']
+        self._trusted = config.get('trusted', False)
 
     def has_file(self, hash, project_relpath):
-        return _has_file(self._url)
+        return _has_file(self._url, hash, self._trusted)
 
     def download_file(self, hash, project_relpath, output_file):
         # Ignore the SHA. Just download. Everything else will validate.
@@ -42,13 +71,14 @@ class UrlTemplatesBackend(Backend):
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
         self._urls = config['url_templates']
+        self._trusted = config.get('trusted', False)
 
     def _format(self, url, hash):
         return url.format(hash=hash, algo='sha512')
 
     def has_file(self, hash, project_relpath):
         for url in self._urls:
-            if _has_file(self._format(url, hash)):
+            if _has_file(self._format(url, hash), hash, self._trusted):
                 return True
         return False
 

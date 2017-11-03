@@ -44,7 +44,6 @@ def do_check(args, project, hash_file):
     with open(hash_file) as fd:
         hash = fd.read().strip()
 
-    print(project_relpath)
     remote = project.load_remote(project_relpath)
 
     def dump_remote_config():

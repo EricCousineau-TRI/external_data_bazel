@@ -7,13 +7,12 @@ load("@external_data_bazel_pkg//tools:macros.bzl",
 )
 
 SETTINGS = dict(
-    verbose = False,
     extra_data = [
         "//:external_data_sentinel",
         "//tools:external_data.user.yml",
         "//tools:external_data_config.py",
     ],
-    extra_args = "--user_config $(location //tools:external_data.user.yml)",
+    extra_args = ["--user_config=$(location //tools:external_data.user.yml)"],
 )
 
 def external_data(*args, **kwargs):
