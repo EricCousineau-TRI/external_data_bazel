@@ -12,7 +12,7 @@ SETTINGS = dict(
         "//tools:external_data.user.yml",
         "//tools:external_data_config.py",
     ],
-    extra_args = ["--user_config=$(location //tools:external_data.user.yml)"],
+    cli_extra_args = ["--user_config=$(location //tools:external_data.user.yml)"],
 )
 
 def external_data(*args, **kwargs):

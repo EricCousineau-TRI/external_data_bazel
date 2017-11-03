@@ -11,7 +11,7 @@ SETTINGS_DEFAULT = dict(
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
     # @note This is NOT for arguments after `cli ... download`.
-    extra_args = [],
+    cli_extra_args = [],
     # Adds a test suite when tests are finished.
     # Experimental, will most likely be removed.
     enable_test_suite = False,
@@ -40,9 +40,9 @@ def _get_cli_base_args(filepath, settings):
     # (Otherwise, PWD will point to downstream project, which will make a conflict.)
     args.append("--project_root_guess=$(location {})".format(filepath))
     # Extra Arguments (for project settings).
-    extra_args = settings['extra_args']
-    if extra_args:
-        args += extra_args
+    cli_extra_args = settings['cli_extra_args']
+    if cli_extra_args:
+        args += cli_extra_args
     return args
 
 
