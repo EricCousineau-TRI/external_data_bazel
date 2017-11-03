@@ -4,49 +4,33 @@ set -x
 
 eecho() { echo "$@" >&2; }
 mkcd() { mkdir -p ${1} && cd ${1}; }
-_bazel() { bazel --bazelrc=/dev/null "$@"; }
+bazel() { $(which bazel) --bazelrc=/dev/null "$@"; }
 # For testing, we should be able to both (a) test and (b) run the target.
-_bazel-test() { _bazel test "$@" && _bazel run "$@"; }
-_readlink() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' ${1}; }
-list_rm() {
-    f_rm=${1}
-    shift
-    for f in "$@"; do
-        if [[ ${f} != ${f_rm} ]]; then
-            echo ${f}
-        fi
-    done
-}
+bazel-test() { bazel test "$@" && bazel run "$@"; }
+readlink_py() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' ${1}; }
 should_fail() { eecho "Should have failed!"; exit 1; }
 
+# Clear out any old cache and upload in mock directory.
+# This is only important when running this test via `bazel run`.
+# @note This is hard-coded into the configuration files, and this *must* match.
+tmp_dir=/tmp/external_data_bazel
+[[ -d ${tmp_dir} ]] && { eecho "Remove: ${tmp_dir}"; rm -rf ${tmp_dir}; }
+
 # Follow `WORKFLOWS.md`
-mock_dir=/tmp/external_data_bazel/bazel_external_data_mock
+mock_dir=${tmp_dir}/bazel_external_data_mock
 
 # TODO: Prevent this from running outside of Bazel.
 
 # Copy what's needed for modifiable `test_mock` directory.
 srcs="src tools test_mock BUILD.bazel WORKSPACE"
 rm -rf ${mock_dir}
-mkdir ${mock_dir}
+mkdir -p ${mock_dir}
 for src in ${srcs}; do
-    cp -r $(_readlink ${src}) ${mock_dir}
+    cp -r $(readlink_py ${src}) ${mock_dir}
 done
-# chmod -R +w ${mock_dir}
 
-# Clear out any old cache and upload in mock directory.
-rmsy() {
-    cur_dir=${1}
-    if [[ -d ${cur_dir} ]]; then
-        eecho "Removing: ${cur_dir}";
-        rm -rf ${cur_dir}
-    fi
-}
-
-# This is only important when running this test via `bazel run`.
-cache_dir=/tmp/external_data_bazel/test_cache
-rmsy ${cache_dir}
-upload_dir=/tmp/external_data_bazel/upload
-rmsy ${upload_dir}
+cache_dir=${tmp_dir}/test_cache
+upload_dir=${tmp_dir}/upload
 
 # Start modifying.
 cd ${mock_dir}/test_mock
@@ -91,10 +75,10 @@ py_test(
 EOF
 
 # Ensure that we can build the file.
-_bazel build :new.bin
+bazel build :new.bin
 
 # Ensure that we can run the test with the file in development mode.
-_bazel-test :test_basics
+bazel-test :test_basics
 
 # Ensure that our cache and upload directory is empty.
 [[ ! -d ${cache_dir} ]]
@@ -117,14 +101,14 @@ diff ${upload_file} ./new.bin > /dev/null
 
 # - Change the original, such that it'd fail the test, and ensure failure.
 echo "User changed the file" > ./new.bin
-_bazel-test :test_bascis && should_fail
+bazel-test :test_bascis && should_fail
 [[ ! -d ${cache_dir} ]]
 
 # Now switch to 'no_cache' mode.
 sed -i 's#mode = "devel",#mode = "no_cache",#g' ./BUILD.bazel
 cat BUILD.bazel
 # Ensure that we can now run the binary with the external data setup.
-_bazel-test :test_basics
+bazel-test :test_basics
 # No cache should have been used.
 [[ ! -d ${cache_dir} ]]
 
@@ -133,7 +117,7 @@ sed -i 's/mode = "no_cache",/# Normal is implicit./g' ./BUILD.bazel
 cat BUILD.bazel
 # - Clean so that we re-trigger a download.
 bazel clean
-_bazel-test :test_basics
+bazel-test :test_basics
 
 # This should have encountered a cache-miss.
 [[ -d ${cache_dir} ]]
@@ -167,7 +151,7 @@ cp expected.txt new.bin
 sed -i 's/# Normal is implicit./mode = "devel",/g' ./BUILD.bazel
 cat ./BUILD.bazel
 # The test should pass.
-_bazel-test :test_basics
+bazel-test :test_basics
 
 # Now upload the newest version.
 # - Trying to upload the SHA-512 file should fail.
@@ -183,7 +167,7 @@ cat ./BUILD.bazel
 
 # Now remove the file. It should still pass the test.
 rm new.bin
-_bazel-test :test_basics
+bazel-test :test_basics
 
 # Download and check the file, but as a symlink now.
 ../tools/external_data download --symlink ./new.bin.sha512
@@ -200,14 +184,14 @@ echo "Corrupted" > ${cache_file}
 diff new.bin expected.txt > /dev/null && should_fail
 # - Bazel should have recognized the write on the internally built file.
 # It will re-trigger a download.
-_bazel-test :test_basics
+bazel-test :test_basics
 # Ensure our symlink is now correct.
 diff new.bin expected.txt > /dev/null
 
 # Remove the cache.
 rm -rf ${cache_dir}
 # - Bazel should have a bad symlink, and should recognize this and re-trigger a download.
-_bazel-test :test_basics
+bazel-test :test_basics
 # - The cache directory should have been re-created.
 [[ -d ${cache_dir} ]]
 
@@ -226,7 +210,7 @@ find . -name '*.bin' | xargs rm -f
 
 # @note We must pre-download `basic.bin` to cache it so that `package/basic.bin` is valid.
 # @note We must also pre-download `direct.bin` since it's download is Bazel-specific.
-_bazel build :basic.bin :direct.bin
+bazel build :basic.bin :direct.bin
 
 # Ensure that we can download all files here (without --check_file).
 find . -name '*.sha512' | xargs ../tools/external_data download
@@ -242,7 +226,7 @@ find . -name '*.sha512' | xargs ../tools/external_data download
 sed -i 's#check_file = False,#check_file = True,#g' ../tools/external_data.bzl
 cat ../tools/external_data.bzl
 
-_bazel build :data
+bazel build :data
 
 # Now add the file from our original setup.
 # - Delete the uploads so that is now an invalid file.
@@ -257,6 +241,6 @@ diff glob_4.bin ../data_new/expected.txt > /dev/null
 # - Now check via command-line that it fails.
 ../tools/external_data download --check_file=only ./glob_4.bin.sha512 && should_fail
 # - Now ensure that Bazel fails when building the file.
-_bazel build :data && should_fail
+bazel build :data && should_fail
 
 echo "[ Done ]"
