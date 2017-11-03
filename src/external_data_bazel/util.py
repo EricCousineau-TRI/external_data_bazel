@@ -33,16 +33,16 @@ def in_bazel_runfiles(cur_dir=None, project=None):
 
 
 def compute_sha(filepath):
-    sha = subshell(['sha512sum', filepath]).split(' ')[0]
-    return sha
+    hash = subshell(['sha512sum', filepath]).split(' ')[0]
+    return hash
 
 
 def check_sha(sha_expected, filepath, do_throw=True):
     """ Check if a file has an expected SHA """
-    sha = compute_sha(filepath)
-    if sha != sha_expected:
+    hash = compute_sha(filepath)
+    if hash != sha_expected:
         if do_throw:
-            raise RuntimeError("SHA-512 mismatch: {} != {} for {}".format(sha, sha_expected, filepath))
+            raise RuntimeError("SHA-512 mismatch: {} != {} for {}".format(hash, sha_expected, filepath))
         else:
             return False
     else:

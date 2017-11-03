@@ -33,31 +33,31 @@ class MockBackend(Backend):
             for file in os.listdir(cur_dir):
                 filepath = os.path.join(cur_dir, file)
                 if os.path.isfile(filepath):
-                    sha = util.compute_sha(filepath)
-                    self._map[sha] = filepath
+                    hash = util.compute_sha(filepath)
+                    self._map[hash] = filepath
         crawl(self._dir)
         if os.path.exists(self._upload_dir):
             crawl(self._upload_dir)
 
-    def has_file(self, sha, project_relpath):
-        return sha in self._map
+    def has_file(self, hash, project_relpath):
+        return hash in self._map
 
-    def download_file(self, sha, project_relpath, output_file):
-        filepath = self._map.get(sha)
+    def download_file(self, hash, project_relpath, output_file):
+        filepath = self._map.get(hash)
         if filepath is None:
-            raise util.DownloadError("Unknown sha: {}".format(sha))
+            raise util.DownloadError("Unknown hash: {}".format(hash))
         util.subshell(['cp', filepath, output_file])
 
-    def upload_file(self, sha, project_relpath, filepath):
-        sha = util.compute_sha(filepath)
-        assert sha not in self._map
+    def upload_file(self, hash, project_relpath, filepath):
+        hash = util.compute_sha(filepath)
+        assert hash not in self._map
         if not os.path.isdir(self._upload_dir):
             os.makedirs(self._upload_dir)
         # Copy the file.
-        dest = os.path.join(self._upload_dir, sha)
+        dest = os.path.join(self._upload_dir, hash)
         util.subshell(['cp', filepath, dest])
         # Store the SHA.
-        self._map[sha] = dest
+        self._map[hash] = dest
 
 
 def _has_file(url):
@@ -82,10 +82,10 @@ class UrlBackend(Backend):
         Backend.__init__(self, config, project)
         self._url = config['url']
 
-    def has_file(self, sha, project_relpath):
+    def has_file(self, hash, project_relpath):
         return _has_file(self._url)
 
-    def download_file(self, sha, project_relpath, output_file):
+    def download_file(self, hash, project_relpath, output_file):
         # Ignore the SHA. Just download. Everything else will validate.
         _download_file(self._url, output_file)
 
@@ -99,24 +99,24 @@ class UrlTemplatesBackend(Backend):
         Backend.__init__(self, config, project)
         self._urls = config['url_templates']
 
-    def _format(self, url, sha):
-        return url.format(hash=sha, algo='sha512')
+    def _format(self, url, hash):
+        return url.format(hash=hash, algo='sha512')
 
-    def has_file(self, sha, project_relpath):
+    def has_file(self, hash, project_relpath):
         for url in self._urls:
-            if _has_file(self._format(url, sha)):
+            if _has_file(self._format(url, hash)):
                 return True
         return False
 
-    def download_file(self, sha, project_relpath, output_file):
+    def download_file(self, hash, project_relpath, output_file):
         for url in self._urls:
             try:
-                _download_file(self._format(url, sha))
+                _download_file(self._format(url, hash))
                 return
             except util.DownloadError:
                 pass
         algo = 'sha512'
-        raise util.DownloadError("Could not download {}:{} from:\n{}".format(algo, sha, "\n".join(self._urls)))
+        raise util.DownloadError("Could not download {}:{} from:\n{}".format(algo, hash, "\n".join(self._urls)))
 
 # TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
 # dependency.
@@ -141,11 +141,11 @@ class GirderBackend(Backend):
                 "-L -s --data key={api_key} {api_url}/api_key/token".format(api_key=self._api_key, api_url=self._api_url))
             self._token = json.loads(token_raw)["authToken"]["token"]
 
-    def _download_url(self, sha):
-        return "{api_url}/file/hashsum/sha512/{sha}/download".format(sha=sha, api_url=self._api_url)
+    def _download_url(self, hash):
+        return "{api_url}/file/hashsum/sha512/{hash}/download".format(hash=hash, api_url=self._api_url)
 
-    def _download_args(self, sha):
-        url = self._download_url(sha)
+    def _download_args(self, hash):
+        url = self._download_url(hash)
         self._authenticate_if_needed()
         if self._token:
             args = '-H "Girder-Token: {token}" "{url}"'.format(token=self._token, url=url)
@@ -153,13 +153,13 @@ class GirderBackend(Backend):
             args = url
         return args
 
-    def has_file(self, sha, project_relpath):
+    def has_file(self, hash, project_relpath):
         """ Returns true if the given SHA exists on the given server. """
         # TODO(eric.cousineau): Is there a quicker way to do this???
         # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
         # This is necessary if we have users with the same file?
         # What about authentication? Optional authentication / public access?
-        args = self._download_args(sha)
+        args = self._download_args(hash)
         first_line = util.subshell('curl -s --head {args} | head -n 1'.format(args=args))
         if first_line == "HTTP/1.1 404 Not Found":
             return False
@@ -168,8 +168,8 @@ class GirderBackend(Backend):
         else:
             raise RuntimeError("Unknown response: {}".format(first_line))
 
-    def download_file(self, sha, project_relpath, output_file):
-        args = self._download_args(sha)
+    def download_file(self, hash, project_relpath, output_file):
+        args = self._download_args(hash)
         util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
     def _get_girder_client(self):
@@ -179,13 +179,13 @@ class GirderBackend(Backend):
             self._girder_client.authenticate(apiKey=self._api_key)
         return self._girder_client
 
-    def upload_file(self, sha, project_relpath, filepath):
+    def upload_file(self, hash, project_relpath, filepath):
         item_name = "%s %s" % (os.path.basename(filepath), datetime.utcnow().isoformat())
 
         print("api_url ............: %s" % self._api_url)
         print("folder_id ..........: %s" % self._folder_id)
         print("filepath ...........: %s" % filepath)
-        print("sha512 .............: %s" % sha)
+        print("sha512 .............: %s" % hash)
         print("item_name ..........: %s" % item_name)
         print("project_root .......: %s" % self.project.root)
         print("project_relpath .: %s" % project_relpath)

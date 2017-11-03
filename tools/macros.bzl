@@ -45,7 +45,7 @@ def external_data(file, mode='normal', url=None, visibility=None,
 
     if mode == 'devel':
         # TODO(eric.cousineau): It'd be nice if there is a way to (a) check if there is
-        # a `*.sha512` file, and if so, (b) check the sha of the input file.
+        # a `*.sha512` file, and if so, (b) check the hash of the input file.
         if settings['enable_warn']:
             # TODO(eric.cousineau): Print full location of given file?
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +

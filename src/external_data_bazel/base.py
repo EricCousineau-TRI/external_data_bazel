@@ -23,18 +23,18 @@ class Backend(object):
         self.project = project
         self.config = config
 
-    def has_file(self, sha, project_relpath):
+    def has_file(self, hash, project_relpath):
         """ Determines if the storage mechanism has a given SHA. """
         raise NotImplemented()
 
-    def download_file(self, sha, project_relpath, output_path):
+    def download_file(self, hash, project_relpath, output_path):
         """ Downloads a file from a given SHA to a given output path.
         @param project_relpath
             File path relative to project. May be None, depending on
             how this is used (e.g. via CMake/ExternalData). """
         raise RuntimeError("Downloading not supported for this backend")
 
-    def upload_file(self, sha, project_relpath):
+    def upload_file(self, hash, project_relpath):
         """ Uploads a file from an output path given a SHA.
         @param project_relpath
             Same as for `download_file`, but must not be None.
@@ -62,30 +62,30 @@ class Remote(object):
         """ Returns whether this remote is overlaying another. """
         return self.overlay is not None
 
-    def has_file(self, sha, project_relpath, check_overlay=True):
+    def has_file(self, hash, project_relpath, check_overlay=True):
         """ Returns whether this remote (or its overlay) has a given SHA. """
-        if self._backend.has_file(sha, project_relpath):
+        if self._backend.has_file(hash, project_relpath):
             return True
         elif check_overlay and self.has_overlay():
-            return self.overlay.has_file(sha, project_relpath)
+            return self.overlay.has_file(hash, project_relpath)
 
-    def download_file_direct(self, sha, project_relpath, output_file):
+    def download_file_direct(self, hash, project_relpath, output_file):
         """ Downloads a file directly and checks the SHA.
         @pre `output_file` should not exist. """
         assert not os.path.exists(output_file)
         try:
-            self._backend.download_file(sha, project_relpath, output_file)
-            util.check_sha(sha, output_file)
+            self._backend.download_file(hash, project_relpath, output_file)
+            util.check_sha(hash, output_file)
         except util.DownloadError as e:
             if self.has_overlay():
                 # TODO(eric.cousineau): If hierarchical caching is used (for whatever reason), this
                 # would be an invalid operation.
-                self.overlay.download_file_direct(sha, project_relpath, output_file)
+                self.overlay.download_file_direct(hash, project_relpath, output_file)
             else:
                 # Rethrow
                 raise e
 
-    def download_file(self, sha, project_relpath, output_file,
+    def download_file(self, hash, project_relpath, output_file,
                       use_cache = True, symlink = True):
         """ Downloads a file.
         @param use_cache
@@ -110,7 +110,7 @@ class Remote(object):
                 util.subshell(['chmod', '+w', output_file])
             # On error, remove cached file, and re-download.
             if not skip_sha_check:
-                if not util.check_sha(sha, output_file, do_throw=False):
+                if not util.check_sha(hash, output_file, do_throw=False):
                     util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
                     # `os.remove()` will remove read-only files without prompting.
                     os.remove(cache_path)
@@ -125,18 +125,18 @@ class Remote(object):
 
         def get_download_and_cache():
             with util.FileWriteLock(cache_path):
-                self.download_file_direct(sha, project_relpath, cache_path)
+                self.download_file_direct(hash, project_relpath, cache_path)
                 # Make cache file read-only.
                 util.subshell(['chmod', '-w', cache_path])
-            # Use cached file - `get_download()` has already checked the sha.
+            # Use cached file - `get_download()` has already checked the hash.
             get_cached(skip_sha_check=True)
 
         # Check if we need to download.
         if use_cache:
             if self._check_always:
-                if not self.has_file(sha):
-                    raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, sha, output_file))
-            cache_path = self.package.get_sha_cache_path(sha, create_dir=True)
+                if not self.has_file(hash):
+                    raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, hash, output_file))
+            cache_path = self.package.get_sha_cache_path(hash, create_dir=True)
             # TODO(eric.cousineau): This still isn't atomic, and may encounter a race condition...
             util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
@@ -146,19 +146,19 @@ class Remote(object):
                 get_download_and_cache()
                 return 'download'
         else:
-            self.download_file_direct(sha, project_relpath, output_file)
+            self.download_file_direct(hash, project_relpath, output_file)
             return 'download'
 
     def upload_file(self, filepath, project_relpath):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
         and updates the corresponding SHA file. """
         assert os.path.isabs(filepath)
-        sha = util.compute_sha(filepath)
-        if self._backend.has_file(sha, project_relpath):
+        hash = util.compute_sha(filepath)
+        if self._backend.has_file(hash, project_relpath):
             print("File already uploaded")
         else:
-            self._backend.upload_file(sha, filepath, project_relpath)
-        return sha
+            self._backend.upload_file(hash, filepath, project_relpath)
+        return hash
 
 
 class Package(object):
@@ -210,16 +210,16 @@ class Package(object):
             self._remotes[name] = remote
             return remote
 
-    def get_sha_cache_path(self, sha, create_dir=False):
+    def get_sha_cache_path(self, hash, create_dir=False):
         """ Get the cache path for a given SHA file for the given package.
         Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
-        a = sha[0:2]
-        b = sha[2:4]
+        a = hash[0:2]
+        b = hash[2:4]
         out_dir = os.path.join(self._project.user.cache_dir, a, b)
         if create_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir)
-        return os.path.join(out_dir, sha)
+        return os.path.join(out_dir, hash)
 
 
 class User(object):

@@ -60,7 +60,7 @@ Expected contents.
 EOF
 # Create the new file.
 cp expected.txt new.bin
-sha=$(sha512sum new.bin | cut -f1 -d' ')
+hash=$(sha512sum new.bin | cut -f1 -d' ')
 
 # Write a test that consumes the file.
 cat > test_basics.py <<EOF
@@ -113,7 +113,7 @@ diff ${upload_file} ./new.bin > /dev/null
 [[ ! -d ${cache_dir} ]]
 
 # Ensure that we have created the hash file accurately.
-[[ $(cat ./new.bin.sha512) == ${sha} ]]
+[[ $(cat ./new.bin.sha512) == ${hash} ]]
 
 # - Change the original, such that it'd fail the test, and ensure failure.
 echo "User changed the file" > ./new.bin
@@ -140,7 +140,7 @@ _bazel-test :test_basics
 # - This should be the *only* file in the cache.
 cache_file=$(find ${cache_dir} -type f)
 # Should have been indexed by the SHA.
-[[ $(basename ${cache_file}) == ${sha} ]]
+[[ $(basename ${cache_file}) == ${hash} ]]
 # Contents should be the same.
 diff ${cache_file} ./expected.txt > /dev/null
 

@@ -57,12 +57,12 @@ def do_download(args, project, sha_file, output_file, remote_in=None):
     # not part of this project).
     project_relpath = project.get_canonical_path(base.strip_sha(sha_file))
 
-    # Get the sha.
+    # Get the hash.
     if not os.path.isfile(sha_file):
         raise RuntimeError("ERROR: File not found: {}".format(sha_file))
     if not sha_file.endswith(SHA_SUFFIX):
         raise RuntimeError("ERROR: File does not end with '{}': '{}'".format(SHA_SUFFIX, sha_file))
-    sha = util.subshell("cat {}".format(sha_file))
+    hash = util.subshell("cat {}".format(sha_file))
     use_cache = not args.no_cache
 
     # Common arguments for `format`.
@@ -82,10 +82,10 @@ def do_download(args, project, sha_file, output_file, remote_in=None):
         dump_remote_config()
 
     if args.check_file != 'none':
-        if not remote.has_file(sha, project_relpath):
+        if not remote.has_file(hash, project_relpath):
             if not args.verbose:
                 dump_remote_config()
-            raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, sha))
+            raise RuntimeError("Remote does not have '{}' ({})".format(sha_file, hash))
         if args.check_file == 'only':
             # Skip fetching the file.
             return
@@ -98,6 +98,6 @@ def do_download(args, project, sha_file, output_file, remote_in=None):
             raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
     download_type = remote.download_file(
-        sha, project_relpath, output_file,
+        hash, project_relpath, output_file,
         use_cache=use_cache,
         symlink=args.symlink)

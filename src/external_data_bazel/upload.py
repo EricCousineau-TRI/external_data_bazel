@@ -46,12 +46,12 @@ def do_upload(project, filepath, remote_in):
         remote = remote_in
     else:
         remote = project.load_remote(filepath)
-    sha = remote.upload_file(filepath, project_relpath)
+    hash = remote.upload_file(filepath, project_relpath)
 
     # Write SHA512
     sha_file = filepath + SHA_SUFFIX
     with open(sha_file, 'w') as fd:
-        print("Updating sha file: {}".format(sha_file))
-        fd.write(sha + "\n")
+        print("Updating hash file: {}".format(sha_file))
+        fd.write(hash + "\n")
 
     print("[ Done ]")
