@@ -17,6 +17,10 @@ if util.in_bazel_runfiles():
 parser = argparse.ArgumentParser()
 parser.add_argument('--project_root_guess', type=str, default='.',
                     help='File path to guess the project root.')
+# TODO(eric.cousineau): If we are crossing project boundaries, consider checking project name as well.
+# This would allow a parent project to use `--project_root_guess`, given a child project's files, but
+# without thinking that it's the child project. This is normally handled by PWD, but is not the case
+# with Bazel.
 parser.add_argument('--user_config', type=str, default=None,
                     help='Override user configuration (useful for testing).')
 parser.add_argument('-k', '--keep_going', action='store_true',

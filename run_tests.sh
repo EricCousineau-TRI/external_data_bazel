@@ -29,4 +29,11 @@ echo "[ Edge Case Workflow ]"
     _bazel test //test_workflow/...
 )
 
-# TODO: Run backend tests.
+# TODO: Run backend tests (e.g. GirderHashsum).
+
+# TODO: Not yet complete.
+# echo "[ CMake/ExternalData Workflow ]"
+# (
+#     cd test_cmake
+#     ./run_test.sh
+# )
