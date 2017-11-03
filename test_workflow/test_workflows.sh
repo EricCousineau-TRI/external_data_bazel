@@ -200,7 +200,7 @@ bazel-test :test_basics
 
 # Ensure that we have all the files we want.
 rm new.bin
-find . -name '*.sha512' | xargs ../tools/external_data download --check_file=only
+find . -name '*.sha512' | xargs ../tools/external_data check
 # --check_file=only should not have written a new file.
 [[ ! -f new.bin ]]
 
@@ -218,17 +218,15 @@ bazel build :basic.bin :direct.bin
 # Ensure that we can download all files here (without --check_file).
 find . -name '*.sha512' | xargs ../tools/external_data download
 
-../tools/external_data download --check_file=only ./package/extra.bin.sha512
+../tools/external_data check ./package/extra.bin.sha512
 # Ensure that 'package/basic.bin' is invalid with --check_file.
-../tools/external_data download --check_file=only ./package/basic.bin.sha512 && should_fail
+../tools/external_data check ./package/basic.bin.sha512 && should_fail
 # Same for `direct.bin`, when not consumed in Bazel.
-../tools/external_data download --check_file=only ./package/direct.bin.sha512 && should_fail
+../tools/external_data check ./package/direct.bin.sha512 && should_fail
 
-# Now enable `check_file` in Bazel, and ensure that everything passes, since
+# Now run the external data tests in Bazel, and ensure that everything passes, since
 # all files defined in Bazel are covered by the remote structures.
-sed -i 's#check_file = False,#check_file = True,#g' ../tools/external_data.bzl
-cat ../tools/external_data.bzl
-
+bazel test --test_tag_filters=external_data_test ...
 bazel build :data
 
 # Now add the file from our original setup.
@@ -242,7 +240,7 @@ cp ../data_new/new.bin.sha512 glob_4.bin.sha512
 ../tools/external_data download glob_4.bin.sha512
 diff glob_4.bin ../data_new/expected.txt > /dev/null
 # - Now check via command-line that it fails.
-../tools/external_data download --check_file=only ./glob_4.bin.sha512 && should_fail
+../tools/external_data check ./glob_4.bin.sha512 && should_fail
 # - Now ensure that Bazel fails when building the file.
 bazel build :data && should_fail
 
