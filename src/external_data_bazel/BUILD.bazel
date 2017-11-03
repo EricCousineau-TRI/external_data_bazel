@@ -7,16 +7,28 @@ py_library(
         "util.py",
     ],
     imports = [".."],
-    visibility=["//visibility:public"],
+    visibility = ["//visibility:public"],
 )
 
-py_binary(
-    name = "cli",
+py_library(
+    name = "cli_base",
     srcs = [
-        "cli.py",
         "download.py",
         "upload.py",
     ],
-    deps = [":base"],
-    visibility=["//visibility:public"],
+    deps = [
+        ":base",
+    ],
+    imports = [".."],
+    visibility = ["//visibility:public"],
+)
+
+# Declare 'cli' in //:, to permit easier access to the binary from external repos.
+exports_files(
+    srcs = ["cli.py"],
+)
+
+alias(
+    name = "cli",
+    actual = "//:cli",
 )

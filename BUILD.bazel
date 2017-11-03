@@ -5,9 +5,16 @@ alias(
     actual = "//src/external_data_bazel:base",
 )
 
-alias(
+py_binary(
     name = "cli",
-    actual = "//src/external_data_bazel:cli",
+    srcs = [
+        "//src/external_data_bazel:cli.py",
+    ],
+    deps = [
+        "//src/external_data_bazel:base",
+        "//src/external_data_bazel:cli_base",
+    ],
+    visibility = ["//visibility:public"],
 )
 
 filegroup(
