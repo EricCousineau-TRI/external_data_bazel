@@ -4,7 +4,7 @@ from external_data_bazel import util, config_helpers
 
 HASH_SUFFIX = '.sha512'
 HASH_ALGO = 'sha512'
-REMOTE_SUFFIX = '.remote.yml'
+ROOT_PACKAGE = '//'  # Blech... Need to get a better mechanism.
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 PROJECT_CONFIG_FILE = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
@@ -167,14 +167,21 @@ class Remote(object):
 
 class Package(object):
     """ Provides a hierarchy of remotes for incorporating data from multiple sources. """
-    def __init__(self, config, project, parent):
+    def __init__(self, config, project, parent, parent_relpath):
         self._project = project
         self.parent = parent
+        self.parent_relpath = parent_relpath
+        if self.parent:
+            self.project_path = os.path.join(self.parent.project_path, self.parent_relpath)
+        else:
+            self.project_path = parent_relpath
         remote_name = config['remote']
 
         self._remotes_config = config['remotes']
         self._remotes = {}
         self._remote_is_loading = []
+
+        self._file_overrides = config.get('file_overrides', {})
 
         self.config = config  # For debugging.
 
@@ -189,6 +196,7 @@ class Package(object):
         return self._project.load_backend(backend_type, config)
 
     def _load_remote_impl(self, name, remote_config):
+        assert name not in self._remotes
         # Check against dependency cycles.
         if name in self._remote_is_loading:
             raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
@@ -199,6 +207,12 @@ class Package(object):
         self._remote_is_loading.remove(name)
         self._remotes[name] = remote
         return remote
+
+    def get_relpath(self, project_relpath):
+        # Get path relative to this package.
+        project_relpath_pkg = ROOT_PACKAGE + project_relpath
+        assert util.is_child_path(project_relpath_pkg, self.project_path)
+        return os.path.relpath(project_relpath_pkg, self.project_path)
 
     def load_remote(self, name):
         """ Load a remote for the given package. 
@@ -217,15 +231,15 @@ class Package(object):
             remote_config = self._remotes_config[name]
             return self._load_remote_impl(name, remote_config)
 
-    def load_remote_by_relpath(self, relpath):
-        remote_config_file_rel = relpath + REMOTE_SUFFIX
-        remote_config_file = self._project.get_canonical_path(remote_config_file_rel)
-        if os.path.exists(remote_config_file):
-            # Load remote from the file.
-            remote_config = config_helpers.parse_config_file(remote_config_file)
-            name = remote_config_file_rel
-            new_remote = self._load_remote_impl(name, remote_config)
-            return new_remote
+    def load_remote_by_relpath(self, project_relpath):
+        relpath = self.get_relpath(project_relpath)
+        if relpath in self._file_overrides:
+            name = "file_overrides[{}]".format(relpath)
+            if name in self._remotes:
+                return self._remotes[name]
+            else:
+                remote_config = self._file_overrides[relpath]
+                return self._load_remote_impl(name, remote_config)
         else:
             return self.remote
 
@@ -270,7 +284,7 @@ class Project(object):
         """ Initializes the root package for a project.
         Must be called close to the project being initialized. """
         assert self._root_package is None
-        self._root_package = Package(package_config, self, None)
+        self._root_package = Package(package_config, self, parent=None, parent_relpath=ROOT_PACKAGE)
         config_file_rel = self.get_relpath(package_config['config_file'])
         self._packages[config_file_rel] = self._root_package
 
@@ -294,7 +308,7 @@ class Project(object):
         while remote:
             config_file = self._get_remote_config_file(remote)
             config = {remote.name: remote.config}
-            node.update(config_file=config_file, config=config)
+            node.update(config_file=config_file, config=config, package=remote.package.project_path)
             remote = remote.overlay
             if remote:
                 parent = node
@@ -339,7 +353,9 @@ class Project(object):
                 # Parse the package config file.
                 config = config_helpers.parse_config_file(config_file)
                 # Load package.
-                package = Package(config, self, parent)
+                parent_relpath = parent.get_relpath(os.path.dirname(config_file_rel))
+                # Create.
+                package = Package(config, self, parent, parent_relpath=parent_relpath)
                 self._packages[config_file_rel] = package
         return package
 
