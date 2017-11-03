@@ -101,7 +101,7 @@ diff ${upload_file} ./new.bin > /dev/null
 
 # - Change the original, such that it'd fail the test, and ensure failure.
 echo "User changed the file" > ./new.bin
-bazel-test :test_bascis && should_fail
+bazel-test :test_basics && should_fail
 [[ ! -d ${cache_dir} ]]
 
 # Now switch to 'no_cache' mode.
