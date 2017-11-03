@@ -28,6 +28,7 @@ _TEST_SUFFIX = "__download_test"
 # --test_tag_filters=external_data does not require a remote.
 _TEST_TAGS = ["external_data_test"]
 _TOOL = "@external_data_bazel_pkg//:cli"
+_PACKAGE_TARGET = ":external_data_enabler"
 
 
 def _get_cli_base_args(filepath, settings):
@@ -46,6 +47,34 @@ def _get_cli_base_args(filepath, settings):
     return args
 
 
+def enable_external_data(parent):
+    """ Required to use externl data in a given package.
+    This permits all package config files to be incorporated (both parent
+    and child directories). """
+    # TODO(eric.cousineau): Remove this if it's not important.
+    srcs = native.glob(["**/" + PACKAGE_CONFIG_FILE])
+    native.exports_files(
+        srcs = srcs,
+    )
+    if parent != None:
+        parent_target = parent + _PACKAGE_TARGET
+        # TODO(eric.cousineau): Unable to check rule existence in external packages...
+        # Is there a way to make this more user-friendly?
+        # if not native.existing_rule(parent_target):
+            # fail("Please ensure that you call 'enable_external_data()' in {}".format(parent))
+        srcs.append(parent_target)
+    native.filegroup(
+        name = _PACKAGE_TARGET[1:],
+        srcs = srcs,
+        visibility = ["__subpackages__"],
+    )
+
+def _check_enabled(settings):
+    # Ensure that we have enabled external data in this package.
+    if native.existing_rule(_PACKAGE_TARGET[1:]) == None:
+        fail("External data not enabled for this package.\n"
+             + "  Please call 'enable_external_data()' at the beginning of your BUILD file.")
+
 def external_data(file, mode='normal', visibility=None,
                   settings=SETTINGS_DEFAULT):
     """
@@ -63,6 +92,8 @@ def external_data(file, mode='normal', visibility=None,
     # Overlay.
     # TODO: Check for invalid settings?
     settings = SETTINGS_DEFAULT + settings
+
+    _check_enabled(settings)
 
     if mode == 'devel':
         # TODO(eric.cousineau): It'd be nice if there is a way to (a) check if there is
@@ -107,6 +138,9 @@ def external_data(file, mode='normal', visibility=None,
                   "\n  cmd: {}".format(cmd))
 
         cli_data = settings['cli_data']
+        data = [hash_file] + cli_data
+
+        data.append(_PACKAGE_TARGET)
 
         # package_config_files = _find_package_config_files(hash_file)
         # NOTE: This above can include glob-visibile sub-package config files.
@@ -120,7 +154,7 @@ def external_data(file, mode='normal', visibility=None,
 
         native.genrule(
             name = name,
-            srcs = [hash_file] + cli_data,
+            srcs = data,
             outs = [file],
             cmd = cmd,
             tools = [_TOOL],
@@ -140,6 +174,8 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
 
     # Overlay.
     settings = SETTINGS_DEFAULT + settings
+
+    _check_enabled(settings)
 
     if settings['enable_warn'] and files_devel and mode == "devel":
         print('WARNING: You are specifying `files_devel` and `mode="devel"`, which is redundant. Try choosing one.')
@@ -215,6 +251,8 @@ def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
     # Overlay.
     settings = SETTINGS_DEFAULT + settings
 
+    _check_enabled(settings)
+
     tests = []
     for rule in existing_rules.values():
         file = _get_external_data_file(rule)
@@ -236,17 +274,4 @@ def get_original_files(hash_files):
             fail("Hash file does end with '{}': '{}'".format(HASH_SUFFIX, hash_file))
         file = hash_file[:-len(HASH_SUFFIX)]
         files.append(file)
-    return files
-
-
-def _find_package_config_files(filepath):
-    # TODO(eric.cousineau): This may get expensive... Is there a way to specify this more simply???
-    # Or even more consistently???
-    sep = '/'
-    pieces = filepath.split(sep)
-    test_files = []
-    for i in range(len(pieces)):
-        test_file = sep.join(pieces[0:i] + [PACKAGE_CONFIG_FILE])
-        test_files.append(test_file)
-    files = native.glob(test_files)
     return files

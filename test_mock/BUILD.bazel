@@ -1,3 +1,9 @@
+load("//tools:external_data.bzl",
+    "enable_external_data",
+)
+
+enable_external_data(None)
+
 filegroup(
     name = "external_data_sentinel",
     srcs = [":.external_data.project.yml"],

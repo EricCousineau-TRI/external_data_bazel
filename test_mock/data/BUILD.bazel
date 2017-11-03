@@ -1,4 +1,5 @@
 load("//tools:external_data.bzl",
+    "enable_external_data",
     "external_data",
     "external_data_group",
     "add_external_data_tests",
@@ -6,6 +7,8 @@ load("//tools:external_data.bzl",
 )
 
 package(default_visibility = ["//visibility:public"])
+
+enable_external_data("//")
 
 external_data(
     file = "basic.bin",
