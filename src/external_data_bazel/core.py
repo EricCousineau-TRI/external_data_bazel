@@ -4,11 +4,10 @@ from external_data_bazel import util, config_helpers
 
 HASH_SUFFIX = '.sha512'
 HASH_ALGO = 'sha512'
-PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
-PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
+PACKAGE_CONFIG_FILE = ".external_data.yml"
+PROJECT_CONFIG_FILE = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
 CACHE_DIR_DEFAULT = "~/.cache/external_data_bazel"
-SENTINEL_DEFAULT = PROJECT_CONFIG_FILE_DEFAULT
 USER_CONFIG_DEFAULT = {
     "core": {
         "cache_dir": CACHE_DIR_DEFAULT,
@@ -355,10 +354,10 @@ class Project(object):
 def _load_project_config(guess_filepath):
     # Load the project user configuration from a filepath to guess to find the project root.
     # Start guessing where the project lives.
-    sentinel = {'file': SENTINEL_DEFAULT}
+    sentinel = {'file': PROJECT_CONFIG_FILE, 'type': 'file'}
     project_root, root_alternatives = config_helpers.find_project_root(guess_filepath, sentinel)
     # Load configuration.
-    project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE_DEFAULT))
+    project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE))
     project_config = config_helpers.parse_config_file(project_config_file)
     # Inject project information.
     project_config['root'] = project_root
@@ -373,7 +372,7 @@ def _find_package_config_files(project, filepath_in):
     # This permits specifying a hierarchy of packages.
     filepath = project.get_canonical_path(filepath_in)
     start_dir = config_helpers.guess_start_dir(filepath)
-    return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE_DEFAULT)
+    return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE)
 
 
 def load_project(guess_filepath, user_config_in = None):
@@ -420,7 +419,7 @@ def load_project(guess_filepath, user_config_in = None):
         get_backends = get_default_backends
 
     project = Project(project_config, user, get_backends())
-    root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE_DEFAULT))
+    root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE))
     project.init_root_package(root_package_config)
     return project
 
