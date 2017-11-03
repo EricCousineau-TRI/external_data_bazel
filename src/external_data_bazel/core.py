@@ -367,9 +367,10 @@ def _load_project_config(guess_filepath):
     project_config['root_alternatives'] = root_alternatives
     return project_config
 
+
 def _find_package_config_files(project, filepath_in):
-    """ Get all package's config files for a given filepath.
-    This permits specifying a hierarchy of packages. """
+    # Get all package's config files for a given filepath.
+    # This permits specifying a hierarchy of packages.
     filepath = project.get_canonical_path(filepath_in)
     start_dir = config_helpers.guess_start_dir(filepath)
     return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE_DEFAULT)
@@ -395,20 +396,22 @@ def load_project(guess_filepath, user_config_in = None):
 
     project_config = _load_project_config(guess_filepath)
 
-    from external_data_bazel.backends import get_default_backends
     setup_config_py = project_config.get('setup_config_py')
+    get_backends = None
     if setup_config_py:
         setup_config = {}
         with open(os.path.join(project_config['root'], setup_config_py)) as f:
             exec(f.read(), globals(), setup_config)
-        get_backends = setup_config.get('get_backends', get_default_backends)
-    else:
+        get_backends = setup_config.get('get_backends')
+    if get_backends is None:
+        from external_data_bazel.backends import get_default_backends
         get_backends = get_default_backends
 
     project = Project(project_config, user, get_backends())
     root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE_DEFAULT))
     project.init_root_package(root_package_config)
     return project
+
 
 def strip_hash(filepath):
     assert filepath.endswith(HASH_SUFFIX)

@@ -1,0 +1,37 @@
+imports = ["../.."]
+
+py_library(
+    name = "core",
+    srcs = [
+        "__init__.py",
+        "general.py",
+        "mock.py",
+    ],
+    deps = [
+        "//src/external_data_bazel:core",
+    ],
+    imports = imports,
+)
+
+py_library(
+    name = "girder",
+    srcs = [
+        "girder.py",
+    ],
+    deps = [
+        ":core",
+    ],
+    imports = imports,
+)
+
+py_library(
+    name = "backends",
+    deps = [
+        # TODO(eric.cousineau): Conditionally select?
+        # For now, just delegate to a run-time selection.
+        ":core",
+        ":girder",
+    ],
+    imports = imports,
+    visibility = ["//src/external_data_bazel:__subpackages__"],
+)

@@ -4,125 +4,21 @@ import os
 from external_data_bazel import util
 from external_data_bazel.core import Backend
 
-# TODO(eric.cousineau): Consider implementing Git LFS protocol as a backend for pure
-# Hash files (for migration, if needed).
-
-# TODO(eric.cousineau): Given that Backend supports a `project_relpath`, consider adding
-# git-lfs or git-annex clients as potential backends.
-
-
-def get_default_backends():
-    return {
-        "mock": MockBackend,
-        "url": UrlBackend,
-        "url_templates": UrlTemplatesBackend,
-        "girder": GirderBackend,
-    }
-
-
-class MockBackend(Backend):
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
-        self._dir = os.path.join(self.project.root, config['dir'])
-        # TODO(eric.cousineau): Enable ${PWD} for testing?
-        self._upload_dir = os.path.join(self.project.root, config['upload_dir'])
-
-        # Crawl through files and compute SHAs.
-        self._map = {}
-        def crawl(cur_dir):
-            for file in os.listdir(cur_dir):
-                filepath = os.path.join(cur_dir, file)
-                if os.path.isfile(filepath):
-                    hash = util.compute_hash(filepath)
-                    self._map[hash] = filepath
-        crawl(self._dir)
-        if os.path.exists(self._upload_dir):
-            crawl(self._upload_dir)
-
-    def has_file(self, hash, project_relpath):
-        return hash in self._map
-
-    def download_file(self, hash, project_relpath, output_file):
-        filepath = self._map.get(hash)
-        if filepath is None:
-            raise util.DownloadError("Unknown hash: {}".format(hash))
-        util.subshell(['cp', filepath, output_file])
-
-    def upload_file(self, hash, project_relpath, filepath):
-        hash = util.compute_hash(filepath)
-        assert hash not in self._map
-        if not os.path.isdir(self._upload_dir):
-            os.makedirs(self._upload_dir)
-        # Copy the file.
-        dest = os.path.join(self._upload_dir, hash)
-        util.subshell(['cp', filepath, dest])
-        # Store the SHA.
-        self._map[hash] = dest
-
-
-def _has_file(url):
-    first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
-    bad = ["HTTP/1.1 404 Not Found"]
-    good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
-    if first_line in bad:
-        return False
-    elif first_line in good:
-        return True
-    else:
-        raise RuntimeError("Unknown code: {}".format(first_line))
-
-
-def _download_file(url, output_file):
-    util.curl('-L -o {output_file} {url}'.format(url=url, output_file=output_file))
-
-
-class UrlBackend(Backend):
-    """ For direct URLs. """
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
-        self._url = config['url']
-
-    def has_file(self, hash, project_relpath):
-        return _has_file(self._url)
-
-    def download_file(self, hash, project_relpath, output_file):
-        # Ignore the SHA. Just download. Everything else will validate.
-        _download_file(self._url, output_file)
-
-
-class UrlTemplatesBackend(Backend):
-    """ For formatted or direct URL downloads.
-    This supports CMake/ExternalData-like URL templates, but using Python formatting '{algo}' and '{hash}'
-    rather than '%(algo)' and '%(hash)'.
-    """
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
-        self._urls = config['url_templates']
-
-    def _format(self, url, hash):
-        return url.format(hash=hash, algo='sha512')
-
-    def has_file(self, hash, project_relpath):
-        for url in self._urls:
-            if _has_file(self._format(url, hash)):
-                return True
-        return False
-
-    def download_file(self, hash, project_relpath, output_file):
-        for url in self._urls:
-            try:
-                _download_file(self._format(url, hash))
-                return
-            except util.DownloadError:
-                pass
-        algo = 'sha512'
-        raise util.DownloadError("Could not download {}:{} from:\n{}".format(algo, hash, "\n".join(self._urls)))
-
 # TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
 # dependency.
 # If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
 
-class GirderBackend(Backend):
+# TODO(eric.cousineau): Split this into a common base backend.
+# @ref https://github.com/girder/girder/issues/2446
+# For the above link, if it turns into a separate plugin on Girder server-side,
+# still keep the original backend for hashsum.
+# Ensure this plugin still uses the same configuration.
+
+# TODO(eric.cousineau): Consider permitting padding a URL with a prefix, e.g. "[devel] " or "[master] ",
+# to allow specific configuruation to be specified.
+# Possibly permit still leveraging the original URL authentication?
+
+class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
     def __init__(self, config, project):
         Backend.__init__(self, config, project)
@@ -173,6 +69,9 @@ class GirderBackend(Backend):
         util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
     def _get_girder_client(self):
+        # @note We import girder_client here, as only uploading requires it at present.
+        # If `girder_client` can be imported via Bazel with minimal pain, then we can bubble
+        # this up to the top-level.
         import girder_client
         if self._girder_client is None:
             self._girder_client = girder_client.GirderClient(apiUrl=self._api_url)
@@ -197,3 +96,9 @@ class GirderBackend(Backend):
         with open(filepath, 'rb') as fd:
             print("Uploading: {}".format(filepath))
             gc.uploadFile(self._folder_id, fd, name=item_name, size=size, parentType='folder', reference=ref)
+
+
+def get_backends():
+    return {
+        "girder_hashum": GirderHashsumBackend,
+    }
