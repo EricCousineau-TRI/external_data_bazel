@@ -18,10 +18,12 @@ USER_CONFIG_DEFAULT = {
 
 class Backend(object):
     """ Downloads or uploads a file from a given storage mechanism given the hash file.
-    This also has access to the project to determine project name, file relative paths
+    This also has access to the package (and indirectly, the project) to determine the
+    file path relative to the package as well. The project can be used to retrieve the
     (if applicable), etc. """
-    def __init__(self, config, project):
-        self.project = project
+    def __init__(self, config, package):
+        self.package = package
+        self.project = self.package.project
         self.config = config
         self.can_upload = False
 
@@ -171,7 +173,7 @@ class Remote(object):
 class Package(object):
     """ Provides a hierarchy of remotes for incorporating data from multiple sources. """
     def __init__(self, config, project, parent, parent_relpath):
-        self._project = project
+        self.project = project
         self.parent = parent
         self.parent_relpath = parent_relpath
         if self.parent:
@@ -196,7 +198,8 @@ class Package(object):
 
     def load_backend(self, backend_type, config):
         """ @see Project.load_backend """
-        return self._project.load_backend(backend_type, config)
+        backend_cls = self.project.get_backend_cls(backend_type)
+        return backend_cls(config, self)
 
     def _load_remote_impl(self, name, remote_config):
         assert name not in self._remotes
@@ -251,7 +254,7 @@ class Package(object):
         Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
         out_dir = os.path.join(
-            self._project.user.cache_dir, HASH_ALGO, hash[0:2], hash[2:4])
+            self.project.user.cache_dir, HASH_ALGO, hash[0:2], hash[2:4])
         if create_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir)
         return os.path.join(out_dir, hash)
@@ -339,10 +342,9 @@ class Project(object):
         assert not os.path.isabs(relpath)
         return os.path.join(self.root, relpath)
 
-    def load_backend(self, backend_type, config):
+    def get_backend_cls(self, backend_type):
         """ Load the backend of a given type. """
-        backend_cls = self._backends[backend_type]
-        return backend_cls(config, self)
+        return self._backends[backend_type]
 
     def _load_package(self, relpath):
         """ Load the package for the given filepath. """

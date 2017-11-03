@@ -4,7 +4,10 @@ import os
 from external_data_bazel import util
 from external_data_bazel.core import Backend
 
+
 def _check_hash(url, hash_expected):
+    # TODO(eric.cousineau): It'd be nice to cache the downloaded file, if it's ever
+    # useful.
     import tempfile
     class TmpFileName(object):
         def __init__(self):
@@ -50,8 +53,8 @@ def _download_file(url, output_file):
 
 class UrlBackend(Backend):
     """ For direct URLs. """
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
+    def __init__(self, config, package):
+        Backend.__init__(self, config, package)
         self._url = config['url']
         self._trusted = config.get('trusted', False)
 
@@ -68,8 +71,8 @@ class UrlTemplatesBackend(Backend):
     This supports CMake/ExternalData-like URL templates, but using Python formatting '{algo}' and '{hash}'
     rather than '%(algo)' and '%(hash)'.
     """
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
+    def __init__(self, config, package):
+        Backend.__init__(self, config, package)
         self._urls = config['url_templates']
         self._trusted = config.get('trusted', False)
 

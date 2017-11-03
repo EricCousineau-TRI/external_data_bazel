@@ -4,10 +4,6 @@ import os
 from external_data_bazel import util
 from external_data_bazel.core import Backend
 
-# TODO(eric.cousineau): If `girder_client` is sufficiently lightweight, we can make this a proper Bazel
-# dependency.
-# If it's caching mechanism is efficient and robust against Bazel, we should use that as well.
-
 # TODO(eric.cousineau): Split this into a common base backend.
 # @ref https://github.com/girder/girder/issues/2446
 # For the above link, if it turns into a separate plugin on Girder server-side,
@@ -20,8 +16,8 @@ from external_data_bazel.core import Backend
 
 class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
-    def __init__(self, config, project):
-        Backend.__init__(self, config, project)
+    def __init__(self, config, package):
+        Backend.__init__(self, config, package)
         self.can_upload = True
         self._url = config['url']
         self._api_url = "{}/api/v1".format(self._url)
