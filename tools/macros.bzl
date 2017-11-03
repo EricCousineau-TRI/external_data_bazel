@@ -10,7 +10,11 @@ SETTINGS_DEFAULT = dict(
     extra_data = ["//:external_data_sentinel"],
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
+    # @note This is NOT for arguments after `cli ... download`.
     extra_args = [],
+    # Adds a test suite when tests are finished.
+    # Experimental, will most likely be removed.
+    enable_test_suite = False,
 )
 
 
@@ -217,11 +221,12 @@ def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
         if file:
             tests.append(_external_data_test(file, settings))
 
-    native.test_suite(
-        name = "external_data_tests",
-        tests = tests,
-        tags = _TEST_TAGS,
-    )
+    if settings["enable_test_suite"]:
+        native.test_suite(
+            name = "external_data_tests",
+            tests = tests,
+            tags = _TEST_TAGS,
+        )
 
 
 def get_original_files(hash_files):
