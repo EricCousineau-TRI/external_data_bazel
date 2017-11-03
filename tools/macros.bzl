@@ -205,10 +205,13 @@ def _external_data_test(file, rule, settings):
     extra_data = settings['extra_data']
 
     # TODO: Can this be made a test?
-    native.sh_test(
+    print("srcs: {}".format([_TOOL]))
+    native.py_test(
         name = name,
         data = [hash_file] + extra_data,
         srcs = [_TOOL],
+        main = _TOOL + ".py",  # BLECH
+        deps = ["@external_data_bazel_pkg//:cli_deps"],  # BLECH
         args = ["check", "abc"],
         tags = _TEST_TAGS,
         # Changes `execroot`, and symlinks the files that we need to crawl the directory

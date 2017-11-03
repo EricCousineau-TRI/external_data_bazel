@@ -5,14 +5,26 @@ alias(
     actual = "//src/external_data_bazel:core",
 )
 
+alias(
+    name = "cli.py",
+    actual = "//src/external_data_bazel:cli.py",
+)
+
+py_library(
+    name = "cli_deps",
+    deps = [
+        "//src/external_data_bazel:core",
+        "//src/external_data_bazel:cli_base",
+    ],
+)
+
 py_binary(
     name = "cli",
     srcs = [
         "//src/external_data_bazel:cli.py",
     ],
     deps = [
-        "//src/external_data_bazel:core",
-        "//src/external_data_bazel:cli_base",
+        ":cli_deps",
     ],
     visibility = ["//visibility:public"],
 )
