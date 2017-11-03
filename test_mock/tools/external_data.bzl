@@ -7,14 +7,13 @@ load("@external_data_bazel_pkg//tools:macros.bzl",
 )
 
 SETTINGS = dict(
-    verbose = True,
+    verbose = False,
     extra_data = [
         "//:external_data_sentinel",
         "//tools:external_data.user.yml",
         "//tools:external_data_config.py",
     ],
     extra_args = "--user_config $(location //tools:external_data.user.yml)",
-    check_file = False,
 )
 
 def external_data(*args, **kwargs):
@@ -32,7 +31,6 @@ def external_data_group(*args, **kwargs):
     )
 
 def add_external_data_tests(*args, **kwargs):
-    print("rawr")
     _add_external_data_tests(
         *args,
         settings = SETTINGS,

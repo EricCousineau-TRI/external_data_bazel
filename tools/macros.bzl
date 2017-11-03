@@ -3,9 +3,6 @@ SETTINGS_DEFAULT = dict(
     enable_warn = True,
     # Verbosity: Will dump configuration, including user information (e.g. API keys!).
     verbose = False,
-    # Check file: Rather than just relying on the cache, this will check that the file
-    # actually exists in the given remote. This is an integrity check.
-    check_file = False,
     # Extra data. Generally, this is just the sentinel data (so we can detect the project
     # root). However, any custom configuration modules can be included here as well.
     # WARNING: The sentinel MUST be placed next to the workspace root. Logic for non-workspace
@@ -99,8 +96,6 @@ def external_data(file, mode='normal', url=None, visibility=None,
         cmd += "$(location {}) ".format(hash_file)
         # Argument: Output file.
         cmd += "--output $@ "
-        if settings['check_file']:
-            cmd += "--check_file=extra "
 
         if settings['verbose']:
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
