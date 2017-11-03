@@ -37,6 +37,7 @@ def run(args, project, remote_in):
 
 def do_upload(project, filepath, remote_in):
     filepath = os.path.abspath(filepath)
+    project_relpath = project.get_canonical_path(filepath)
     if filepath.endswith(SHA_SUFFIX):
         filepath_guess = filepath[:-len(SHA_SUFFIX)]
         raise RuntimeError("Input file is a SHA file. Did you mean to upload '{}' instead?".format(filepath_guess))
@@ -45,7 +46,7 @@ def do_upload(project, filepath, remote_in):
         remote = remote_in
     else:
         remote = project.load_remote(filepath)
-    sha = remote.upload_file(filepath)
+    sha = remote.upload_file(filepath, project_relpath)
 
     # Write SHA512
     sha_file = filepath + SHA_SUFFIX

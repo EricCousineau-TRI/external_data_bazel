@@ -4,7 +4,12 @@ import os
 from external_data_bazel import util
 from external_data_bazel.base import Backend
 
-# TODO(eric.cousineau): Consider implementing LFS protocol?
+# TODO(eric.cousineau): Consider implementing Git LFS protocol as a backend for pure
+# SHA files (for migration, if needed).
+
+# TODO(eric.cousineau): Given that Backend supports a `project_relpath`, consider adding
+# git-lfs or git-annex clients as potential backends.
+
 
 def get_default_backends():
     return {
@@ -34,16 +39,16 @@ class MockBackend(Backend):
         if os.path.exists(self._upload_dir):
             crawl(self._upload_dir)
 
-    def has_file(self, sha):
+    def has_file(self, sha, project_relpath):
         return sha in self._map
 
-    def download_file(self, sha, output_file):
+    def download_file(self, sha, project_relpath, output_file):
         filepath = self._map.get(sha)
         if filepath is None:
             raise util.DownloadError("Unknown sha: {}".format(sha))
         util.subshell(['cp', filepath, output_file])
 
-    def upload_file(self, sha, filepath):
+    def upload_file(self, sha, project_relpath, filepath):
         sha = util.compute_sha(filepath)
         assert sha not in self._map
         if not os.path.isdir(self._upload_dir):
@@ -77,10 +82,10 @@ class UrlBackend(Backend):
         Backend.__init__(self, config, project)
         self._url = config['url']
 
-    def has_file(self, sha):
+    def has_file(self, sha, project_relpath):
         return _has_file(self._url)
 
-    def download_file(self, sha, output_file):
+    def download_file(self, sha, project_relpath, output_file):
         # Ignore the SHA. Just download. Everything else will validate.
         _download_file(self._url, output_file)
 
@@ -97,13 +102,13 @@ class UrlTemplatesBackend(Backend):
     def _format(self, url, sha):
         return url.format(hash=sha, algo='sha512')
 
-    def has_file(self, sha):
+    def has_file(self, sha, project_relpath):
         for url in self._urls:
             if _has_file(self._format(url, sha)):
                 return True
         return False
 
-    def download_file(self, sha, output_file):
+    def download_file(self, sha, project_relpath, output_file):
         for url in self._urls:
             try:
                 _download_file(self._format(url, sha))
@@ -148,7 +153,7 @@ class GirderBackend(Backend):
             args = url
         return args
 
-    def has_file(self, sha):
+    def has_file(self, sha, project_relpath):
         """ Returns true if the given SHA exists on the given server. """
         # TODO(eric.cousineau): Is there a quicker way to do this???
         # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
@@ -163,7 +168,7 @@ class GirderBackend(Backend):
         else:
             raise RuntimeError("Unknown response: {}".format(first_line))
 
-    def download_file(self, sha, output_file):
+    def download_file(self, sha, project_relpath, output_file):
         args = self._download_args(sha)
         util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
@@ -174,12 +179,8 @@ class GirderBackend(Backend):
             self._girder_client.authenticate(apiKey=self._api_key)
         return self._girder_client
 
-    def upload_file(self, sha, filepath):
+    def upload_file(self, sha, project_relpath, filepath):
         item_name = "%s %s" % (os.path.basename(filepath), datetime.utcnow().isoformat())
-
-        versioned_filepath = os.path.relpath(filepath, self.project.root)
-        if versioned_filepath.startswith('..'):
-            raise RuntimeError("File to upload, '{}', must be under '{}'".format(filepath, self.project.root))
 
         print("api_url ............: %s" % self._api_url)
         print("folder_id ..........: %s" % self._folder_id)
@@ -187,9 +188,10 @@ class GirderBackend(Backend):
         print("sha512 .............: %s" % sha)
         print("item_name ..........: %s" % item_name)
         print("project_root .......: %s" % self.project.root)
-        print("versioned_filepath .: %s" % versioned_filepath)
-        # TODO(eric.cousineau): Include `conf.project_name` in the versioning.
-        ref = json.dumps({'versionedFilePath': versioned_filepath})
+        print("project_relpath .: %s" % project_relpath)
+        # TODO(eric.cousineau): Include `project.name` in the versioning!
+        # TODO(eric.cousineau): Add the visualization key for the Girder `vtk.js` stuff.
+        ref = json.dumps({'versionedFilePath': project_relpath})
         gc = self._get_girder_client()
         size = os.stat(filepath).st_size
         with open(filepath, 'rb') as fd:
