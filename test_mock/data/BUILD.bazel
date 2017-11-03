@@ -1,6 +1,7 @@
 load("//tools:external_data.bzl",
     "external_data",
     "external_data_group",
+    "add_external_data_tests",
     "get_original_files",
 )
 
@@ -46,3 +47,5 @@ filegroup(
         ":package_overlay",
     ],
 )
+
+add_external_data_tests()

@@ -2,6 +2,7 @@
 load("@external_data_bazel_pkg//tools:macros.bzl",
     _external_data="external_data",
     _external_data_group="external_data_group",
+    "add_external_data_tests",
     "get_original_files"
 )
 

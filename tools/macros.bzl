@@ -20,6 +20,14 @@ SETTINGS_DEFAULT = dict(
 HASH_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 
+_RULE_SUFFIX = "__download"
+_RULE_TAG = "external_data"
+_TEST_SUFFIX = "__download_test"
+# @note This does NOT include 'external_data', so that running with
+# --test_tag_filters=external_data does not require a remote.
+_TEST_TAGS = ["external_data_test"]
+_TOOL = "@external_data_bazel_pkg//:cli"
+
 
 def external_data(file, mode='normal', url=None, visibility=None,
                   settings=SETTINGS_DEFAULT):
@@ -56,12 +64,11 @@ def external_data(file, mode='normal', url=None, visibility=None,
             visibility = visibility,
         )
     elif mode in ['normal', 'no_cache']:
-        name = "{}__download".format(file)
+        name = file + _RULE_SUFFIX
         hash_file = file + HASH_SUFFIX
-        tool = "@external_data_bazel_pkg//:cli"
 
         # Binary:
-        cmd = "$(location {}) ".format(tool)
+        cmd = "$(location {}) ".format(_TOOL)
         # Argument: Verbosity.
         if settings['verbose']:
             cmd += "--verbose "
@@ -116,8 +123,8 @@ def external_data(file, mode='normal', url=None, visibility=None,
             srcs = [hash_file] + extra_data,
             outs = [file],
             cmd = cmd,
-            tools = [tool],
-            tags = ["external_data"],
+            tools = [_TOOL],
+            tags = [_RULE_TAG],
             # Changes `execroot`, and symlinks the files that we need to crawl the directory
             # structure and get hierarchical packages.
             local = 1,
@@ -161,6 +168,77 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
     native.filegroup(
         name = name,
         srcs = all_files,
+    )
+
+def _get_external_data_file(rule):
+    name = rule.get("name")
+    if name and name.endswith(_RULE_SUFFIX):
+        if _RULE_TAG in rule["tags"]:
+            return name[:-len(_RULE_SUFFIX)]
+    return None
+
+
+def _external_data_test(file, rule, settings):
+    # This will only be called if the rule is actually downloaded.
+    # This test merely checks that this file is indeed available on the remote (ignoring cache).
+    name = file + _TEST_SUFFIX
+    hash_file = file + HASH_SUFFIX
+
+    pieces = rule["cmd"].split(" download ")  # HACK
+    cmd_start = "$(location {}) ".format(_TOOL)
+    if len(pieces) != 2:
+        fail("Internal error")
+
+    if not pieces[0].startswith(cmd_start):
+        fail("Internal error")
+
+    # Same setup (including URL).
+    cmd = pieces[0] #[len(cmd_start):]  # Strip out binary.
+    # Subcommand: Check.
+    cmd += "check "
+    # Argument: Hash file.
+    cmd += "$(location {}) ".format(hash_file)
+
+    if settings['verbose']:
+        print("\n_external_data_test(file = '{}'):".format(file) +
+              "\n  cmd: {}".format(cmd))
+
+    extra_data = settings['extra_data']
+
+    # TODO: Can this be made a test?
+    native.genrule(
+        name = name,
+        srcs = [hash_file] + extra_data,
+        outs = [],
+        cmd = cmd,
+        tools = [_TOOL],
+        tags = _TEST_TAGS,
+        # Changes `execroot`, and symlinks the files that we need to crawl the directory
+        # structure and get hierarchical packages.
+        local = 1,
+        testonly = 1,
+    )
+    return name
+
+
+def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
+    # Follow @drake//tools/lint:cpplint.bzl
+    if existing_rules == None:
+        existing_rules = native.existing_rules()
+
+    # Overlay.
+    settings = SETTINGS_DEFAULT + settings
+
+    tests = []
+    for rule in existing_rules.values():
+        file = _get_external_data_file(rule)
+        if file:
+            tests.append(_external_data_test(file, rule, settings))
+
+    native.test_suite(
+        name = "external_data_tests",
+        tests = tests,
+        tags = _TEST_TAGS,
     )
 
 
