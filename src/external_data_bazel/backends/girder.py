@@ -17,8 +17,7 @@ from external_data_bazel.core import Backend
 class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
     def __init__(self, config, package):
-        Backend.__init__(self, config, package)
-        self.can_upload = True
+        Backend.__init__(self, config, package, can_upload=True)
         self._url = config['url']
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config['folder_id']

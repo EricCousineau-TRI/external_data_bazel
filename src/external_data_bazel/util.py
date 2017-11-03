@@ -35,6 +35,9 @@ def in_bazel_runfiles(cur_dir=None, project=None):
 
 
 def compute_hash(filepath):
+    assert os.path.isabs(filepath)
+    if not os.path.exists(filepath):
+        raise RuntimeError("File does not exist: {}".format(filepath))
     hash = subshell(['sha512sum', filepath]).split(' ')[0]
     return hash
 

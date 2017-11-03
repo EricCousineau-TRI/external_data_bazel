@@ -7,7 +7,7 @@ from external_data_bazel.core import Backend
 class MockBackend(Backend):
     """ A mock backend for testing. """
     def __init__(self, config, package):
-        Backend.__init__(self, config, package)
+        Backend.__init__(self, config, package, can_upload=True)
         self._dir = os.path.join(self.project.root, config['dir'])
         # TODO(eric.cousineau): Enable ${PWD} for testing?
         self._upload_dir = os.path.join(self.project.root, config['upload_dir'])

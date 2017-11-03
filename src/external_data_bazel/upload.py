@@ -43,7 +43,7 @@ def do_upload(project, filepath):
         raise RuntimeError("Input file is a hash file. Did you mean to upload '{}' instead?".format(filepath_guess))
 
     remote = project.load_remote(project_relpath)
-    hash = remote.upload_file(filepath, project_relpath)
+    hash = remote.upload_file(project_relpath, filepath)
 
     # Write SHA512
     hash_file = filepath + HASH_SUFFIX

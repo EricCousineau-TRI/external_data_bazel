@@ -21,11 +21,11 @@ class Backend(object):
     This also has access to the package (and indirectly, the project) to determine the
     file path relative to the package as well. The project can be used to retrieve the
     (if applicable), etc. """
-    def __init__(self, config, package):
+    def __init__(self, config, package, can_upload):
         self.package = package
         self.project = self.package.project
         self.config = config
-        self.can_upload = False
+        self.can_upload = can_upload
 
     def has_file(self, hash, project_relpath):
         """ Determines if the storage mechanism has a given SHA.
@@ -156,7 +156,7 @@ class Remote(object):
             self.download_file_direct(hash, project_relpath, output_file)
             return 'download'
 
-    def upload_file(self, filepath, project_relpath):
+    def upload_file(self, project_relpath, filepath):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
         and updates the corresponding hash file. """
         assert os.path.isabs(filepath)
@@ -166,7 +166,7 @@ class Remote(object):
         if self._backend.has_file(hash, project_relpath):
             print("File already uploaded")
         else:
-            self._backend.upload_file(hash, filepath, project_relpath)
+            self._backend.upload_file(hash, project_relpath, filepath)
         return hash
 
 

@@ -241,7 +241,9 @@ cp ../data_new/new.bin.sha512 glob_4.bin.sha512
 diff glob_4.bin ../data_new/expected.txt > /dev/null
 # - Now check via command-line that it fails.
 ../tools/external_data check ./glob_4.bin.sha512 && should_fail
-# - Now ensure that Bazel fails when building the file.
-bazel build :data && should_fail
+# - With caching, it should be able to build.
+bazel build :data
+# - Now ensure that the tests all fail.
+bazel test --test_tag_filters=external_data_test ... && should_fail
 
 echo "[ Done ]"

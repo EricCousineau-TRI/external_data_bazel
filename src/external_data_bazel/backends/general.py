@@ -54,7 +54,7 @@ def _download_file(url, output_file):
 class UrlBackend(Backend):
     """ For direct URLs. """
     def __init__(self, config, package):
-        Backend.__init__(self, config, package)
+        Backend.__init__(self, config, package, can_upload=False)
         self._url = config['url']
         self._trusted = config.get('trusted', False)
 
@@ -72,7 +72,7 @@ class UrlTemplatesBackend(Backend):
     rather than '%(algo)' and '%(hash)'.
     """
     def __init__(self, config, package):
-        Backend.__init__(self, config, package)
+        Backend.__init__(self, config, package, can_upload=False)
         self._urls = config['url_templates']
         self._trusted = config.get('trusted', False)
 
