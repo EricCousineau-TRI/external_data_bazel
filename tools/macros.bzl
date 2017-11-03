@@ -198,21 +198,31 @@ def _external_data_test(file, rule, settings):
     # Argument: Hash file.
     cmd += "$(location {}) ".format(hash_file)
 
-    if settings['verbose']:
-        print("\n_external_data_test(file = '{}'):".format(file) +
-              "\n  cmd: {}".format(cmd))
-
     extra_data = settings['extra_data']
 
-    # TODO: Can this be made a test?
-    print("srcs: {}".format([_TOOL]))
+    args = [
+        "--project_root_guess=$(location {})".format(hash_file),
+    ]
+    if settings['verbose']:
+        args += ['--verbose']
+    args += [
+        "check",
+        "$(location {})".format(hash_file),
+    ]
+
+    if settings['verbose']:
+        print("\n_external_data_test(file = '{}'):".format(file) +
+              "\n  cmd: {}".format(" ".join([_TOOL] + args)))
+
+    # Have to use `py_test` to run an existing binary with arguments...
+    # Blech.
     native.py_test(
         name = name,
         data = [hash_file] + extra_data,
         srcs = [_TOOL],
-        main = _TOOL + ".py",  # BLECH
-        deps = ["@external_data_bazel_pkg//:cli_deps"],  # BLECH
-        args = ["check", "abc"],
+        main = _TOOL + ".py",
+        deps = ["@external_data_bazel_pkg//:cli_deps"],
+        args = args,
         tags = _TEST_TAGS,
         # Changes `execroot`, and symlinks the files that we need to crawl the directory
         # structure and get hierarchical packages.

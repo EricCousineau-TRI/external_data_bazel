@@ -24,9 +24,6 @@ def add_arguments(parser):
                         help='Always download, and do not cache the result.')
     parser.add_argument('--symlink', action='store_true',
                         help='Use a symlink from the cache rather than copying the file.')
-    parser.add_argument('--check_file', choices=['none', 'only', 'extra'], default='none',
-                        help='Will check if the remote (or its overlays) has a desired file, ignoring the cache. For integrity checks. '
-                             + 'If "only", it will only check that the file exists, and move on. If "extra", it will check, then still fetch the file as normal.')
 
 def run(args, project, remote_in):
     if args.output_file:
@@ -80,15 +77,6 @@ def do_download(args, project, hash_file, output_file, remote_in=None):
 
     if args.verbose:
         dump_remote_config()
-
-    if args.check_file != 'none':
-        if not remote.has_file(hash, project_relpath):
-            if not args.verbose:
-                dump_remote_config()
-            raise RuntimeError("Remote does not have '{}' ({})".format(hash_file, hash))
-        if args.check_file == 'only':
-            # Skip fetching the file.
-            return
 
     # Ensure that we do not overwrite existing files.
     if os.path.isfile(output_file):

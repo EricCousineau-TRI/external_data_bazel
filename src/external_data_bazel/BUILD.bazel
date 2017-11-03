@@ -17,6 +17,7 @@ py_library(
     srcs = [
         "download.py",
         "upload.py",
+        "check.py",
     ],
     deps = [
         ":core",
