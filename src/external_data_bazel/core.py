@@ -271,8 +271,8 @@ class Project(object):
 
     def debug_dump_remote_config(self, remote):
         """ For each remote, print its configuration, relative project path, and its overlays. """
-        base = {}
-        node = base
+        core = {}
+        node = core
         while remote:
             config_file = self._get_remote_config_file(remote)
             config = {remote.name: remote.config}
@@ -284,7 +284,7 @@ class Project(object):
                 parent['overlay'] = node
             else:
                 break
-        return base
+        return core
 
     def get_relpath(self, filepath):
         """ Get filepah relative to project root, using alternative roots if viable.

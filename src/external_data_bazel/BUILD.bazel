@@ -1,9 +1,9 @@
 py_library(
-    name = "base",
+    name = "core",
     srcs = [
         "backends.py",
         "config_helpers.py",
-        "base.py",
+        "core.py",
         "util.py",
     ],
     imports = [".."],
@@ -17,7 +17,7 @@ py_library(
         "upload.py",
     ],
     deps = [
-        ":base",
+        ":core",
     ],
     imports = [".."],
     visibility = ["//visibility:public"],

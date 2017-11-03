@@ -12,9 +12,9 @@ import argparse
 
 from datetime import datetime
 
-from external_data_bazel import base, util
+from external_data_bazel import core, util
 
-HASH_SUFFIX = base.HASH_SUFFIX
+HASH_SUFFIX = core.HASH_SUFFIX
 
 
 def add_arguments(parser):

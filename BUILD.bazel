@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 alias(
-    name = "base",
-    actual = "//src/external_data_bazel:base",
+    name = "core",
+    actual = "//src/external_data_bazel:core",
 )
 
 py_binary(
@@ -11,7 +11,7 @@ py_binary(
         "//src/external_data_bazel:cli.py",
     ],
     deps = [
-        "//src/external_data_bazel:base",
+        "//src/external_data_bazel:core",
         "//src/external_data_bazel:cli_base",
     ],
     visibility = ["//visibility:public"],

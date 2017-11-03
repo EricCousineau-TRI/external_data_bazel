@@ -2,7 +2,7 @@ import json
 import os
 
 from external_data_bazel import util
-from external_data_bazel.base import Backend
+from external_data_bazel.core import Backend
 
 # TODO(eric.cousineau): Consider implementing Git LFS protocol as a backend for pure
 # Hash files (for migration, if needed).

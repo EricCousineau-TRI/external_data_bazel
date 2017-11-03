@@ -48,13 +48,13 @@ def check_hash(hash_expected, filepath, do_throw=True):
     else:
         return True
 
-def merge_unique(base, new):
+def merge_unique(core, new):
     # Merge, ensuring there are no shared keys.
-    old_keys = set(base.keys())
+    old_keys = set(core.keys())
     new_keys = set(new.keys())
     # Ensure there is no intersection.
     assert new_keys - old_keys == new_keys
-    base.update(new)
+    core.update(new)
 
 def find_key(d, value):
     """ Find key by a the first occurrence of a value, or return None. """

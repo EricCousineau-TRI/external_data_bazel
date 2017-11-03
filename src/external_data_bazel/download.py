@@ -4,9 +4,9 @@ import os
 import yaml
 import argparse
 
-from external_data_bazel import base, util, config_helpers
+from external_data_bazel import core, util, config_helpers
 
-HASH_SUFFIX = base.HASH_SUFFIX
+HASH_SUFFIX = core.HASH_SUFFIX
 
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
@@ -55,7 +55,7 @@ def do_download(args, project, hash_file, output_file, remote_in=None):
 
     # Get project-relative path. (This will assert if the file is
     # not part of this project).
-    project_relpath = project.get_canonical_path(base.strip_hash(hash_file))
+    project_relpath = project.get_canonical_path(core.strip_hash(hash_file))
 
     # Get the hash.
     if not os.path.isfile(hash_file):
