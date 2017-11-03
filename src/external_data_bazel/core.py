@@ -8,7 +8,7 @@ PACKAGE_CONFIG_FILE_DEFAULT = ".external_data.yml"
 PROJECT_CONFIG_FILE_DEFAULT = ".external_data.project.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
 CACHE_DIR_DEFAULT = "~/.cache/external_data_bazel"
-SENTINEL_DEFAULT = 'WORKSPACE'
+SENTINEL_DEFAULT = PROJECT_CONFIG_FILE_DEFAULT
 USER_CONFIG_DEFAULT = {
     "core": {
         "cache_dir": CACHE_DIR_DEFAULT,
