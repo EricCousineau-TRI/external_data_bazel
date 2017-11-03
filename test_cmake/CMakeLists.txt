@@ -32,7 +32,8 @@ enable_testing()
 ExternalData_Add_Test(
     NAME
         test_basics
-    # COMMAND
+    COMMAND
         ${PROJECT_SOURCE_DIR}/test_basics.py
             DATA{direct.bin}
 )
+ExternalData_Add_Target(test_basics)
