@@ -107,20 +107,17 @@ def external_data(file, mode='normal', visibility=None,
                   "\n  cmd: {}".format(cmd))
 
         cli_data = settings['cli_data']
+        data = [hash_file] + cli_data
 
-        # package_config_files = _find_package_config_files(hash_file)
-        # NOTE: This above can include glob-visibile sub-package config files.
-        # HOWEVER, this would not include parent files, so we would have to either
-        # (a) explicitly declare those files or (b) keep the odd root_alternatives setup.
-        # (b) is simpler, and does not matter since dirtiness should be due to hash
-        # changing, not the remote changing.
-        # Example: In package "x", hash_file = "a/test.bin.sha512" *could* find
-        # ["//x:.config_file", "//x/a:.config_file"].
-        # However, it would NOT find ["//:.config_file"].
+        # @note We intentionally do not try to expose packages. It's too complex; it's easy
+        # to get child subdirectory package config files, but it's rather annoying to get
+        # parent package config files.
+        # See old branch, "feature/tests_purity", for an attempt to expose this.
+        # This may have encountered bugs in Bazel.
 
         native.genrule(
             name = name,
-            srcs = [hash_file] + cli_data,
+            srcs = data,
             outs = [file],
             cmd = cmd,
             tools = [_TOOL],
@@ -236,17 +233,4 @@ def get_original_files(hash_files):
             fail("Hash file does end with '{}': '{}'".format(HASH_SUFFIX, hash_file))
         file = hash_file[:-len(HASH_SUFFIX)]
         files.append(file)
-    return files
-
-
-def _find_package_config_files(filepath):
-    # TODO(eric.cousineau): This may get expensive... Is there a way to specify this more simply???
-    # Or even more consistently???
-    sep = '/'
-    pieces = filepath.split(sep)
-    test_files = []
-    for i in range(len(pieces)):
-        test_file = sep.join(pieces[0:i] + [PACKAGE_CONFIG_FILE])
-        test_files.append(test_file)
-    files = native.glob(test_files)
     return files
