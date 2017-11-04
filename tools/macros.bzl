@@ -2,7 +2,7 @@ SETTINGS_DEFAULT = dict(
     # Warn if in development mode (e.g. if files will be lost when pushing).
     enable_warn = True,
     # Verbosity: Will dump configuration, including user information (e.g. API keys!).
-    verbose = False,
+    verbose = True,
     # Tool data. Generally, this is just the sentinel data (so we can detect the project
     # root). However, any custom configuration modules can be included here as well.
     # WARNING: The sentinel MUST be placed next to the workspace root. Logic for non-workspace
@@ -15,6 +15,15 @@ SETTINGS_DEFAULT = dict(
     # Adds a test suite when tests are finished.
     # Experimental, will most likely be removed.
     enable_test_suite = False,
+    # This determines how sub-packages are exposed in Bazel.
+    # False - This is normal operation. It will leverage the execroot from
+    #     "local = 1", and just read the files straight out.
+    # True - This requires that Bazel is aware of the file, and that
+    #     targets are appropriately aware of remote configuration for testing.
+    #     You must call "enable_external_data(...)" if this is used in any package *and*
+    #     its parent packages (kind of painful).
+    #     @warning This *frequently* freezes Bazel.
+    expose_subpackage_config = True,
 )
 
 
@@ -71,9 +80,10 @@ def enable_external_data(parent):
 
 def _check_enabled(settings):
     # Ensure that we have enabled external data in this package.
-    if native.existing_rule(_PACKAGE_TARGET[1:]) == None:
-        fail("External data not enabled for this package.\n"
-             + "  Please call 'enable_external_data()' at the beginning of your BUILD file.")
+    if settings["expose_subpackage_config"]:
+        if native.existing_rule(_PACKAGE_TARGET[1:]) == None:
+            fail("External data not enabled for this package.\n"
+                 + "  Please call 'enable_external_data()' at the beginning of your BUILD file.")
 
 def external_data(file, mode='normal', visibility=None,
                   settings=SETTINGS_DEFAULT):
@@ -93,8 +103,6 @@ def external_data(file, mode='normal', visibility=None,
     # TODO: Check for invalid settings?
     settings = SETTINGS_DEFAULT + settings
 
-    _check_enabled(settings)
-
     if mode == 'devel':
         # TODO(eric.cousineau): It'd be nice if there is a way to (a) check if there is
         # a `*.sha512` file, and if so, (b) check the hash of the input file.
@@ -110,6 +118,8 @@ def external_data(file, mode='normal', visibility=None,
     elif mode in ['normal', 'no_cache']:
         name = file + _RULE_SUFFIX
         hash_file = file + HASH_SUFFIX
+
+        _check_enabled(settings)
 
         # Binary:
         args = ["$(location {})".format(_TOOL)]
@@ -140,7 +150,8 @@ def external_data(file, mode='normal', visibility=None,
         cli_data = settings['cli_data']
         data = [hash_file] + cli_data
 
-        data.append(_PACKAGE_TARGET)
+        if settings['expose_subpackage_config']:
+            data.append(_PACKAGE_TARGET)
 
         # package_config_files = _find_package_config_files(hash_file)
         # NOTE: This above can include glob-visibile sub-package config files.
