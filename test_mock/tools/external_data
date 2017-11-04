@@ -16,6 +16,9 @@ if [[ $# -gt 0 && $1 == --do_build ]]; then
 fi
 
 if [[ ! -f ${bin} || -n $do_build ]]; then
+    # TODO(eric.cousineau): Is there a way to use the previous build config,
+    # so that Bazel doesn't switch the symlink and possibly lose whatever
+    # other artifacts the user may want???
     bazel build @external_data_bazel_pkg//:cli
 fi
 
