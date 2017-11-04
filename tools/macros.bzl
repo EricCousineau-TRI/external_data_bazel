@@ -205,7 +205,15 @@ def _external_data_test(file, settings):
 
 
 def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
-    # Follow @drake//tools/lint:cpplint.bzl
+    """ Add tests to ensure that files are still available to download (and not
+    simply cached.
+
+    WARNING: This setup does not have a correct dependency setup on all package configurations.
+    (See comment about package config files, and the complications involved).
+    Because of this, changing a URL for a file *may* not re-trigger the test when needed.
+    If this happens, please consider running the CLI directly when you have made a change.
+    """
+    # Following @drake//tools/lint:cpplint.bzl
     if existing_rules == None:
         existing_rules = native.existing_rules()
 
