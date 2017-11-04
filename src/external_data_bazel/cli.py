@@ -6,13 +6,9 @@ import yaml
 import argparse
 
 from external_data_bazel import core, util, config_helpers
-from external_data_bazel import download, upload
+from external_data_bazel import download, upload, check
 
 assert __name__ == '__main__'
-
-if util.in_bazel_runfiles():
-    util.eprint("ERROR: Do not run this command via `bazel run`.")
-    exit(1)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--project_root_guess', type=str, default='.',
@@ -27,8 +23,6 @@ parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='Dump configuration and show command-line arguments. WARNING: Will print out information in user configuration (e.g. keys) as well!')
-parser.add_argument('--remote', type=str, default=None,
-                    help='Configuration defining a custom override remote. Useful for direct, single-file downloads.')
 
 # Credit here: https://stackoverflow.com/a/10913734/7829525
 subparsers = parser.add_subparsers(dest="command")
@@ -39,7 +33,16 @@ download.add_arguments(download_parser)
 upload_parser = subparsers.add_parser("upload")
 upload.add_arguments(upload_parser)
 
+check_parser = subparsers.add_parser("check")
+check.add_arguments(check_parser)
+
 args = parser.parse_args()
+
+# Do not allow running under Bazel unless we have a guess for the project root from an input file.
+if util.in_bazel_runfiles() and not args.project_root_guess:
+    util.eprint("ERROR: Do not run this command via `bazel run`. Use a wrapper to call the binary.")
+    util.eprint("  (If you are writing a test in Bazel, ensure that you pass `--project_root_guess=$(location <target>)`.)")
+    exit(1)
 
 if args.verbose:
     util.eprint("cmdline:")
@@ -56,13 +59,14 @@ if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
 
-remote_in = None
-if args.remote:
-    remote_config = yaml.load(args.remote)
-    remote_in = project.load_remote_command_line(remote_config)
-
 # Execute command.
 if args.command == 'download':
-    download.run(args, project, remote_in)
+    status = download.run(args, project)
 elif args.command == 'upload':
-    upload.run(args, project, remote_in)
+    status = upload.run(args, project)
+elif args.command == "check":
+    status = check.run(args, project)
+
+if status is not None and status is not True:
+    util.eprint("Encountered error")
+    exit(1)

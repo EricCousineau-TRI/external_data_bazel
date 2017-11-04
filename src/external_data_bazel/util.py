@@ -5,10 +5,12 @@ import sys
 import json
 import time
 
-def is_child_path(child_path, parent_path):
-    assert os.path.isabs(child_path) and os.path.isabs(parent_path)
-    assert not parent_path.endswith(os.path.sep)
-    return child_path.startswith(parent_path + os.path.sep)
+def is_child_path(child_path, parent_path, require_abs=True):
+    if require_abs:
+        assert os.path.isabs(child_path) and os.path.isabs(parent_path)
+    if not parent_path.endswith(os.path.sep):
+        parent_path += os.path.sep
+    return child_path.startswith(parent_path)
 
 # TODO(eric.cousineau): Make a hashing setup, that defines a key for the algorithm, a suffix,
 # and a computation / check method.
@@ -33,6 +35,9 @@ def in_bazel_runfiles(cur_dir=None, project=None):
 
 
 def compute_hash(filepath):
+    assert os.path.isabs(filepath)
+    if not os.path.exists(filepath):
+        raise RuntimeError("File does not exist: {}".format(filepath))
     hash = subshell(['sha512sum', filepath]).split(' ')[0]
     return hash
 

@@ -7,7 +7,7 @@ workspace_dir=$(cd $(dirname $0)/.. && pwd)
 bin_dir=${workspace_dir}/bazel-bin/external/external_data_bazel_pkg
 bin=${bin_dir}/cli
 
-extra_args=--user_config=${workspace_dir}/tools/external_data.user.yml
+cli_extra_args=--user_config=${workspace_dir}/tools/external_data.user.yml
 
 do_build=
 if [[ $# -gt 0 && $1 == --do_build ]]; then
@@ -19,8 +19,8 @@ if [[ ! -f ${bin} || -n $do_build ]]; then
     bazel build @external_data_bazel_pkg//:cli
 fi
 
-echo "cmd: ${bin} ${extra_args} $@" | \
+echo "cmd: ${bin} ${cli_extra_args} $@" | \
     sed \
         -e "s#${bin_dir}#\${bin_dir}#g" \
         -e "s#${workspace_dir}#\${workspace_dir}#g"
-${bin} ${extra_args} "$@"
+${bin} ${cli_extra_args} "$@"

@@ -1,6 +1,7 @@
 load("//tools:external_data.bzl",
     "external_data",
     "external_data_group",
+    "add_external_data_tests",
     "get_original_files",
 )
 
@@ -33,7 +34,6 @@ external_data_group(
 # TODO(eric.cousineau): Address this, if needed.
 external_data(
     file = "direct.bin",
-    url = "https://gist.githubusercontent.com/EricCousineau-TRI/0f331573f686b741f5f70de0f91a8cc1/raw/2eb960a76ec56f8a8a68cf5473d93d7edf75d5ad/direct.bin",  # noqa
 )
 
 filegroup(
@@ -46,3 +46,5 @@ filegroup(
         ":package_overlay",
     ],
 )
+
+add_external_data_tests()

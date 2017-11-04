@@ -21,10 +21,10 @@ def add_arguments(parser):
     parser.add_argument('filepaths', type=str, nargs='+')
 
 
-def run(args, project, remote_in):
+def run(args, project):
     for filepath in args.filepaths:
         def action():
-            do_upload(project, filepath, remote_in)
+            do_upload(project, filepath)
         if args.keep_going:
             try:
                 action()
@@ -35,18 +35,15 @@ def run(args, project, remote_in):
             action()
 
 
-def do_upload(project, filepath, remote_in):
+def do_upload(project, filepath):
     filepath = os.path.abspath(filepath)
-    project_relpath = project.get_canonical_path(filepath)
+    project_relpath = project.get_relpath(filepath)
     if filepath.endswith(HASH_SUFFIX):
         filepath_guess = filepath[:-len(HASH_SUFFIX)]
         raise RuntimeError("Input file is a hash file. Did you mean to upload '{}' instead?".format(filepath_guess))
 
-    if remote_in:
-        remote = remote_in
-    else:
-        remote = project.load_remote(filepath)
-    hash = remote.upload_file(filepath, project_relpath)
+    remote = project.load_remote(project_relpath)
+    hash = remote.upload_file(project_relpath, filepath)
 
     # Write SHA512
     hash_file = filepath + HASH_SUFFIX
