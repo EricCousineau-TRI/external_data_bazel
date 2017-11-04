@@ -20,28 +20,26 @@ def find_project_root(guess_filepath, sentinel):
     """ Finds the project root, accounting for oddities when in Bazel execroot-land.
     This will attempt to find the file sentinel.
     """
-    # Ideally, it'd be nice to just use `git rev-parse --show-top-level`.
-    # However, because Bazel does symlink magic that is not easily parseable,
-    # we should not rely on something like `symlink -f ${file}`, because
-    # if a directory is symlink'd, then we will go to the wrong directory.
-    # Instead, we should just do one `readlink` on the sentinel, and expect
-    # that it is not a link.
-    # Alternatives:
-    #  (1) Custom `.project-root` sentinel. Fine, but useful for accurate versioning,
-    # which is the entire point of `.project-root`.
-    #  (2) `.git` - What we really want, just need to make sure Git sees this.
     start_dir = guess_start_dir(guess_filepath)
     root_file = util.find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+    # If our root_file is a symlink, then this should be due to a Bazel execroot.
+    # Record the original directory as a possible alternative.
     root_alternatives = []
     if os.path.islink(root_file):
         # Assume that the root file is symlink'd because Bazel has linked it in.
         # Read this to get the original path.
-        old_root_dir = os.path.dirname(root_file)
-        root_alternatives.append(old_root_dir)
-        root_file = os.readlink(root_file)
-        assert os.path.isabs(root_file)
-        if os.path.islink(root_file):
+        alt_root_file = os.readlink(root_file)
+        assert os.path.isabs(alt_root_file)
+        if os.path.islink(alt_root_file):
             raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
+        # Ideally, we should be using `root_file` still as the original.
+        # However, when testing, Bazel still expects us to declare each file.
+        # Since we encounter bugs when attempting to declare all package files, then
+        # we will resort to pulling directly from the file system (unfortunately).
+        # TODO(eric.cousineau): When using each package file is no longer a bug,
+        # remove this swap.
+        (alt_root_file, root_file) = (root_file, alt_root_file)
+        root_alternatives.append(os.path.dirname(alt_root_file))
     root = os.path.dirname(root_file)
     return (root, root_alternatives)
 
