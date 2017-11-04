@@ -26,6 +26,7 @@ def add_arguments(parser):
                         help='Use a symlink from the cache rather than copying the file.')
 
 def run(args, project):
+    good = True
     if args.output_file:
         if len(args.hash_files) != 1:
             raise RuntimeError("Can only specify one input file with --output")
@@ -39,10 +40,12 @@ def run(args, project):
                 try:
                     action()
                 except RuntimeError as e:
+                    good = False
                     util.eprint(e)
                     util.eprint("Continuing (--keep_going).")
             else:
                 action()
+    return good
 
 
 def do_download(args, project, hash_file, output_file):

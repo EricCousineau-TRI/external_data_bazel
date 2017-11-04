@@ -15,7 +15,7 @@ def add_arguments(parser):
 
 
 def run(args, project):
-    bad = False
+    good = True
     for hash_file in args.hash_files:
         def action():
             do_check(args, project, hash_file)
@@ -23,15 +23,12 @@ def run(args, project):
             try:
                 action()
             except RuntimeError as e:
-                bad = True
+                good = False
                 util.eprint(e)
                 util.eprint("Continuing (--keep_going).")
         else:
             action()
-    if bad:
-        return False
-    else:
-        return True
+    return good
 
 
 def do_check(args, project, hash_file):

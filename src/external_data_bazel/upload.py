@@ -22,6 +22,7 @@ def add_arguments(parser):
 
 
 def run(args, project):
+    good = True
     for filepath in args.filepaths:
         def action():
             do_upload(project, filepath)
@@ -29,10 +30,12 @@ def run(args, project):
             try:
                 action()
             except RuntimeError as e:
+                good = False
                 util.eprint(e)
                 util.eprint("Continuing (--keep_going).")
         else:
             action()
+    return good
 
 
 def do_upload(project, filepath):
