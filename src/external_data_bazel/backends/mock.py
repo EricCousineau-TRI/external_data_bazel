@@ -43,7 +43,8 @@ class MockBackend(Backend):
     def upload_file(self, hash, project_relpath, filepath):
         self._check_hash_type(hash)
         assert hash not in self._map
-        dest = os.path.join(self._upload_dir, project_relpath)
+        dest = os.path.join(self._upload_dir, hash.get_value())
+        assert not os.path.exists(dest)
         dest_dir = os.path.dirname(dest)
         if not os.path.isdir(dest_dir):
             os.makedirs(dest_dir)

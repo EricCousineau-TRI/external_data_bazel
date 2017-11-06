@@ -6,7 +6,7 @@ eecho() { echo "$@" >&2; }
 mkcd() { mkdir -p ${1} && cd ${1}; }
 bazel() { $(which bazel) --bazelrc=/dev/null "$@"; }
 # For testing, we should be able to both (a) test and (b) run the target.
-bazel-test() { bazel test "$@" && bazel run "$@"; }
+bazel-test() { bazel test "$@"; bazel run "$@"; }
 readlink_py() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' ${1}; }
 should_fail() { eecho "Should have failed!"; exit 1; }
 
