@@ -364,12 +364,58 @@ class Project(object):
                 self._packages[config_file_rel] = package
         return package
 
-    def load_remote(self, relpath):
+    def load_remote(self, project_relpath):
         """ Load remote for a given file to either fetch or push a file """
-        assert not os.path.isabs(relpath)
-        assert not relpath.endswith(HASH_SUFFIX)
-        package = self._load_package(relpath)
-        return package.load_remote_by_relpath(relpath)
+        assert not os.path.isabs(project_relpath)
+        assert not project_relpath.endswith(HASH_SUFFIX)
+        package = self.load_package(project_relpath)
+        return package.load_remote_by_relpath(project_relpath)
+
+    def get_file_info(self, input_file, must_have_hash=True):
+        """ Get file information for a given file (package, remote, default output, etc.). """
+        assert os.path.isabs(input_file)
+        input_relpath = self.get_relpath(input_file)
+        package = self._load_package(input_relpath)
+        # SHA-512 file frontend.
+        if input_file.endswith(HASH_SUFFIX):
+            hash_file = input_file
+            project_file = hash_file[:-len(HASH_SUFFIX)]
+            orig_filepath = project_file
+        else:
+            hash_file = input_file + HASH_SUFFIX
+            project_file = input_file
+        orig_filepath = input_file
+        project_relpath = self.get_relpath(project_file)
+        remote = package.load_remote_by_relpath(project_relpath)
+        default_output_file = project_file
+        if not os.path.isfile(hash_file):
+            if must_have_hash:
+                raise RuntimeError("ERROR: SHA-512 file not found: {}".format(hash_file))
+            else:
+                hash = None
+        else:
+            # Load the hash.
+            with open(hash_file) as f:
+                hash = f.read().strip()
+        return FileInfo(hash, remote, package, project_relpath, default_output_file, orig_filepath)
+
+    def update_file_info(self, info, hash):
+        # Write SHA-512 to the canonical filepath.
+        # TODO(eric.cousineau): Is there any case where we would want this to be near the original input file?
+        hash_file = self.get_canonical_path(info.project_relpath + HASH_SUFFIX)
+        with open(hash_file, 'w') as fd:
+            print("Updating hash file: {}".format(hash_file))
+            fd.write(hash + "\n")
+
+
+class FileInfo(object):
+    def __init__(self, hash, remote, package, project_relpath, default_output_file, orig_filepath):
+        self.hash = hash
+        self.remote = remote
+        self.package = package
+        self.project_relpath = project_relpath
+        self.default_output_file = default_output_file
+        self.orig_filepath = orig_filepath
 
 
 def _load_project_config(guess_filepath):

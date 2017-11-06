@@ -38,20 +38,19 @@ def run(args, project):
     return good
 
 
-def do_upload(project, filepath):
-    filepath = os.path.abspath(filepath)
-    project_relpath = project.get_relpath(filepath)
+def do_upload(project, filepath_in):
+    filepath = os.path.abspath(filepath_in)
     if filepath.endswith(HASH_SUFFIX):
         filepath_guess = filepath[:-len(HASH_SUFFIX)]
         raise RuntimeError("Input file is a hash file. Did you mean to upload '{}' instead?".format(filepath_guess))
 
-    remote = project.load_remote(project_relpath)
-    hash = remote.upload_file(project_relpath, filepath)
+    info = project.get_file_info(filepath, must_have_hash=False)
+    remote = info.remote
+    project_relpath = info.project_relpath
 
-    # Write SHA512
-    hash_file = filepath + HASH_SUFFIX
-    with open(hash_file, 'w') as fd:
-        print("Updating hash file: {}".format(hash_file))
-        fd.write(hash + "\n")
+    # TODO(eric.cousineau): Consider replacing `filepath` with `info.orig_filepath`, to allow
+    # the hash file to be 'uploaded' (redirecting to original file).
+    hash = remote.upload_file(project_relpath, filepath)
+    project.update_file_info(info, hash)
 
     print("[ Done ]")
