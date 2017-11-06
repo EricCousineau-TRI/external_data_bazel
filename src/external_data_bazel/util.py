@@ -119,6 +119,8 @@ class FileWriteLock(object):
         assert os.path.isfile(self.lock)
         os.remove(self.lock)
 
+# TODO: Replace this with a more general sentinel with a callback on directory.
+# This can be used to check project name as well.
 def find_file_sentinel(start_dir, sentinel_file, file_type='file', max_depth=100):
     cur_dir = start_dir
     file_tests = {'any': os.path.exists, 'file': os.path.isfile, 'dir': os.path.isdir}
@@ -162,3 +164,14 @@ def run(cmd, input):
 
 def eprint(*args):
     print(*args, file=sys.stderr)
+
+class TmpFileName(object):
+        def __init__(self):
+            pass
+        def __enter__(self, *args):
+            import tempfile
+            self.filepath = tempfile.mkstemp()[1]
+        def get_path(self):
+            return self.filepath
+        def __exit__(self, *args):
+            os.unlink(self.filepath)

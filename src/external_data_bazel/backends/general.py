@@ -8,17 +8,7 @@ from external_data_bazel.core import Backend
 def _check_hash(url, hash_expected):
     # TODO(eric.cousineau): It'd be nice to cache the downloaded file, if it's ever
     # useful.
-    import tempfile
-    class TmpFileName(object):
-        def __init__(self):
-            pass
-        def __enter__(self, *args):
-            self.filepath = tempfile.mkstemp()[1]
-        def get_path(self):
-            return self.filepath
-        def __exit__(self, *args):
-            os.unlink(self.filepath)
-    tmp_file = TmpFileName()
+    tmp_file = util.TmpFileName()
     with tmp_file:
         tmp_path = tmp_file.get_path()
         util.subshell('curl -s -o {} {}'.format(tmp_path, url))
@@ -51,12 +41,21 @@ def _download_file(url, output_file):
     util.curl('-L -o {output_file} {url}'.format(url=url, output_file=output_file))
 
 
+def _parse_trusted(config):
+    check = config.get('check', 'untrusted')
+    if check == 'trusted':
+        return True
+    elif check == 'untrusted':
+        return False
+    else:
+        raise RuntimeError('Unknown check type: {}'.format(check))
+
 class UrlBackend(Backend):
     """ For direct URLs. """
     def __init__(self, config, package):
         Backend.__init__(self, config, package, can_upload=False)
         self._url = config['url']
-        self._trusted = config.get('trusted', False)
+        self._trusted = _parse_trusted(config)
 
     def has_file(self, hash, project_relpath):
         return _has_file(self._url, hash, self._trusted)
@@ -74,10 +73,10 @@ class UrlTemplatesBackend(Backend):
     def __init__(self, config, package):
         Backend.__init__(self, config, package, can_upload=False)
         self._urls = config['url_templates']
-        self._trusted = config.get('trusted', False)
+        self._trusted = _parse_trusted(config)
 
     def _format(self, url, hash):
-        return url.format(hash=hash, algo='sha512')
+        return url.format(hash=hash.get_value(), algo=hash.get_algo())
 
     def has_file(self, hash, project_relpath):
         for url in self._urls:
