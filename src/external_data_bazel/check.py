@@ -47,4 +47,4 @@ def do_check(args, project, filepath_in):
     if not remote.has_file(hash, project_relpath):
         if not args.verbose:
             dump_remote_config()
-        raise RuntimeError("Remote does not have '{}' ({})".format(filepath, hash))
+        raise RuntimeError("Remote does not have '{}' ({})".format(project_relpath, hash))

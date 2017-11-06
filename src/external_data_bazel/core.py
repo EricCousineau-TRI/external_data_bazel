@@ -39,7 +39,7 @@ class Backend(object):
             how this is used (e.g. via CMake/ExternalData). """
         raise RuntimeError("Downloading not supported for this backend")
 
-    def upload_file(self, hash, project_relpath):
+    def upload_file(self, hash, project_relpath, filepath):
         """ Uploads a file from an output path given a SHA.
         @param project_relpath
             Same as for `download_file`, but must not be None.
