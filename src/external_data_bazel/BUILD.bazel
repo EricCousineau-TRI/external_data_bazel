@@ -4,6 +4,7 @@ py_library(
         "config_helpers.py",
         "core.py",
         "util.py",
+        "hashes.py",
     ],
     imports = [".."],
     visibility = ["//visibility:public"],
