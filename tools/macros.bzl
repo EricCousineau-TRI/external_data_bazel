@@ -80,6 +80,10 @@ def external_data(file, mode='normal', visibility=None,
         name = file + _RULE_SUFFIX
         hash_file = file + HASH_SUFFIX
 
+        # TODO(eric.cousineau): If we enable Git LFS as a frontend, then this should
+        # conditionally add *.sha512 as a dependency. Otherwise, need to figure out another
+        # source for the hash.
+
         # Binary:
         args = ["$(location {})".format(_TOOL)]
         # General commands.

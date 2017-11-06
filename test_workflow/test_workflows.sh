@@ -142,6 +142,11 @@ rm new.bin
 ../tools/external_data download ./new.bin.sha512
 diff new.bin ./expected.txt > /dev/null
 
+# Ensure that we can just refer to the file, without the hash suffix.
+rm new.bin
+../tools/external_data download ./new.bin
+diff new.bin ./expected.txt > /dev/null
+
 # Now we wish to actively modify the file.
 cat > expected.txt <<EOF
 New contents!
