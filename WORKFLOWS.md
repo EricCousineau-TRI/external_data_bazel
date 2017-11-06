@@ -4,7 +4,7 @@
 ## Configuration
 
 * Inspect the configuration examples in `./config`. The files you will have:
-    * `~/.config/external_data_bazel.user.yml` - User configuration (global cache, backend-specific authentication - NOT to be versioned!).
+    * `~/.config/external_data_bazel/config.yml` - User configuration (global cache, backend-specific authentication - NOT to be versioned!).
         * Default values will be used if this file does not exist or define them.
     * `${project_root}/.external_data.project.yml` - Project configuration.
     * `${package_root}/.external_data.yml` - Package configuration. You will need one adjacent to the project root.
