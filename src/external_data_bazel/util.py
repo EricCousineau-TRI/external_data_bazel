@@ -100,20 +100,18 @@ class FileWriteLock(object):
 
 # TODO: Replace this with a more general sentinel with a callback on directory.
 # This can be used to check project name as well.
-def find_file_sentinel(start_dir, sentinel_file, file_type='file', max_depth=100):
+def find_file_sentinel(start_dir, sentinel_file, sentinel_check=os.path.exists, max_depth=100):
     cur_dir = start_dir
-    file_tests = {'any': os.path.exists, 'file': os.path.isfile, 'dir': os.path.isdir}
-    file_test = file_tests[file_type]
     assert len(cur_dir) > 0
     for i in xrange(max_depth):
         assert os.path.isdir(cur_dir)
         test_path = os.path.join(cur_dir, sentinel_file)
-        if file_test(test_path):
+        if sentinel_check(test_path):
             return test_path
         cur_dir = os.path.dirname(cur_dir)
         if len(cur_dir) == 0:
             break
-    raise RuntimeError("Could not find sentinel: {}".format(sentinel_file))
+    return None
 
 
 def subshell(cmd, strip=True):

@@ -16,12 +16,28 @@ def guess_start_dir(filepath):
         return os.path.dirname(filepath)
 
 
-def find_project_root(guess_filepath, sentinel):
+def find_project_root(guess_filepath, sentinel, project_name):
     """ Finds the project root, accounting for oddities when in Bazel execroot-land.
     This will attempt to find the file sentinel.
     """
     start_dir = guess_start_dir(guess_filepath)
-    root_file = util.find_file_sentinel(start_dir, sentinel['file'], file_type=sentinel.get('type', 'any'))
+    def sentinel_check(filepath):
+        if os.path.exists(filepath):
+            if project_name is None:
+                return True
+            else:
+                # Open and read the file to see if we have the desired name.
+                with open(filepath) as f:
+                    config = yaml.load(f)
+                return config['name'] == project_name
+        else:
+            return False
+    root_file = util.find_file_sentinel(start_dir, sentinel, sentinel_check)
+    if root_file is None:
+        hint = ""
+        if project_name:
+            hint = " (with project name = '{}')".format(project_name)
+        raise RuntimeError("Could not find sentinel: {}{}".format(sentinel, hint))
     # If our root_file is a symlink, then this should be due to a Bazel execroot.
     # Record the original directory as a possible alternative.
     root_alternatives = []

@@ -502,11 +502,11 @@ class FileInfo(object):
         self.orig_filepath = orig_filepath
 
 
-def _load_project_config(guess_filepath):
+def _load_project_config(guess_filepath, project_name=None):
     # Load the project user configuration from a filepath to guess to find the project root.
     # Start guessing where the project lives.
-    sentinel = {'file': PROJECT_CONFIG_FILE, 'type': 'file'}
-    project_root, root_alternatives = config_helpers.find_project_root(guess_filepath, sentinel)
+    sentinel = PROJECT_CONFIG_FILE
+    project_root, root_alternatives = config_helpers.find_project_root(guess_filepath, sentinel, project_name)
     # Load configuration.
     project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE))
     project_config = config_helpers.parse_config_file(project_config_file)
@@ -526,10 +526,15 @@ def _find_package_config_files(project, filepath_in):
     return config_helpers.find_package_config_files(project.root, start_dir, PACKAGE_CONFIG_FILE)
 
 
-def load_project(guess_filepath, user_config_in = None):
+def load_project(guess_filepath, project_name = None, user_config_in = None):
     """ Load a project given the injected `bazel_external_data_config` module.
     @param guess_filepath
         Filepath where to start guessing where the project root is.
+    @param user_config_in
+        Overload for user configuration.
+    @param project_name
+        Constrain finding the project root to project files with the provided project name.
+        (For working with nested projects.)
     @return A `Project` instance.
     @see test/bazel_external_data_config
     """
@@ -544,7 +549,7 @@ def load_project(guess_filepath, user_config_in = None):
     user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)
     user = User(user_config)
 
-    project_config = _load_project_config(guess_filepath)
+    project_config = _load_project_config(guess_filepath, project_name)
 
     setup_config_file_relpath = project_config.get('setup_config')
     get_backends = None
