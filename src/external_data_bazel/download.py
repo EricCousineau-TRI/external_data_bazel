@@ -6,8 +6,6 @@ import argparse
 
 from external_data_bazel import core, util, config_helpers
 
-HASH_SUFFIX = core.HASH_SUFFIX
-
 # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
 def add_arguments(parser):

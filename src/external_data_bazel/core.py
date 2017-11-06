@@ -2,8 +2,6 @@ import os
 
 from external_data_bazel import util, config_helpers, hashes
 
-HASH_SUFFIX = '.sha512'
-HASH_ALGO = 'sha512'
 ROOT_PACKAGE = '//'  # Blech... Need to get a better mechanism.
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 PROJECT_CONFIG_FILE = ".external_data.project.yml"
