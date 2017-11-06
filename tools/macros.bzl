@@ -3,11 +3,13 @@ SETTINGS_DEFAULT = dict(
     enable_warn = True,
     # Verbosity: Will dump configuration, including user information (e.g. API keys!).
     verbose = False,
-    # Tool data. Generally, this is just the sentinel data (so we can detect the project
-    # root). However, any custom configuration modules can be included here as well.
-    # WARNING: The sentinel MUST be placed next to the workspace root. Logic for non-workspace
-    # root files is too complex (and useless).
-    cli_data = ["//:external_data_sentinel"],
+    # Sentinel data. Used to detect the project root.
+    # WARNING: The sentinel MUST be placed next to the workspace root.
+    # TODO(eric.cousineau): If the logic can be simplified, consider relaxing this.
+    cli_sentinel = "//:external_data_sentinel",
+    # Extra tool data. Generally, this is empty. However, any custom configuration
+    # modules can be included here as well.
+    cli_data = [],
     # Extra arguments to `cli`. Namely for `--user_config` for mock testing, but can
     # be changed.
     # @note This is NOT for arguments after `cli ... download`.
@@ -35,10 +37,10 @@ def _get_cli_base_args(filepath, settings):
     # Argument: Verbosity.
     if settings['verbose']:
         args.append("--verbose")
-    # Argument: Project root. Guess from the input file rather than PWD, so that a file could
+    # Argument: Project root. Guess from the sentinel file rather than PWD, so that a file could
     # consumed by a downstream Bazel project.
     # (Otherwise, PWD will point to downstream project, which will make a conflict.)
-    args.append("--project_root_guess=$(location {})".format(filepath))
+    args.append("--project_root_guess=$(location {})".format(settings['cli_sentinel']))
     # Extra Arguments (for project settings).
     cli_extra_args = settings['cli_extra_args']
     if cli_extra_args:
@@ -110,8 +112,9 @@ def external_data(file, mode='normal', visibility=None,
             print("\nexternal_data(file = '{}', mode = '{}'):".format(file, mode) +
                   "\n  cmd: {}".format(cmd))
 
+        cli_sentinel = settings['cli_sentinel']
         cli_data = settings['cli_data']
-        data = [hash_file] + cli_data
+        data = [hash_file, cli_sentinel] + cli_data
 
         # @note We intentionally do not try to expose packages. It's too complex; it's easy
         # to get child subdirectory package config files, but it's rather annoying to get
@@ -189,6 +192,7 @@ def _external_data_test(file, settings):
         "$(location {})".format(hash_file),
     ]
 
+    cli_sentinel = settings['cli_sentinel']
     cli_data = settings['cli_data']
 
     # TODO(eric.cousineau): Consider adding "external" as a test tag?
@@ -199,7 +203,7 @@ def _external_data_test(file, settings):
     # Blech.
     native.py_test(
         name = name,
-        data = [hash_file] + cli_data,
+        data = [hash_file, cli_sentinel] + cli_data,
         srcs = [_TOOL],
         main = _TOOL + ".py",
         deps = ["@external_data_bazel_pkg//:cli_deps"],
