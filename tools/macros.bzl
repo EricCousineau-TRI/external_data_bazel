@@ -187,6 +187,10 @@ def _external_data_test(file, settings):
 
     cli_data = settings['cli_data']
 
+    # TODO(eric.cousineau): Consider adding "external" as a test tag?
+    # https://docs.bazel.build/versions/master/test-encyclopedia.html#tag-conventions
+    # This should do what we want.
+
     # Have to use `py_test` to run an existing binary with arguments...
     # Blech.
     native.py_test(
