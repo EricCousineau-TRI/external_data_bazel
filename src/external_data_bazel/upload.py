@@ -17,13 +17,14 @@ from external_data_bazel import core, util
 
 def add_arguments(parser):
     parser.add_argument('filepaths', type=str, nargs='+')
-
+    parser.add_argument('--update_only', action='store_true',
+                        help="Only update the file information (e.g. hash file), but do not upload the file.")
 
 def run(args, project):
     good = True
     for filepath in args.filepaths:
         def action():
-            do_upload(project, filepath)
+            do_upload(args, project, filepath)
         if args.keep_going:
             try:
                 action()
@@ -36,7 +37,7 @@ def run(args, project):
     return good
 
 
-def do_upload(project, filepath_in):
+def do_upload(args, project, filepath_in):
     filepath = os.path.abspath(filepath_in)
 
     hash_orig_file = project.is_hash_file(filepath)
@@ -49,7 +50,9 @@ def do_upload(project, filepath_in):
 
     # TODO(eric.cousineau): Consider replacing `filepath` with `info.orig_filepath`, to allow
     # the hash file to be 'uploaded' (redirecting to original file).
-    hash = remote.upload_file(info.hash.hash_type, project_relpath, filepath)
+    if not args.update_only:
+        hash = remote.upload_file(info.hash.hash_type, project_relpath, filepath)
+    else:
+        # ... Hmm... This looks ugly.
+        hash = info.hash.compute(filepath)
     project.update_file_info(info, hash)
-
-    print("[ Done ]")
