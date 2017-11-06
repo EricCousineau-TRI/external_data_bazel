@@ -20,9 +20,9 @@ SETTINGS_DEFAULT = dict(
 )
 
 
-HASH_SUFFIX = ".sha512"
 PACKAGE_CONFIG_FILE = ".external_data.yml"
 
+_HASH_SUFFIX = ".sha512"
 _RULE_SUFFIX = "__download"
 _RULE_TAG = "external_data"
 _TEST_SUFFIX = "__download_test"
@@ -73,14 +73,14 @@ def external_data(file, mode='normal', visibility=None,
             # TODO(eric.cousineau): Print full location of given file?
             print("\nexternal_data(file = '{}', mode = 'devel'):".format(file) +
                   "\n  Using local workspace file in development mode." +
-                  "\n  Please upload this file and commit the *{} file.".format(HASH_SUFFIX))
+                  "\n  Please upload this file and commit the *{} file.".format(_HASH_SUFFIX))
         native.exports_files(
             srcs = [file],
             visibility = visibility,
         )
     elif mode in ['normal', 'no_cache']:
         name = file + _RULE_SUFFIX
-        hash_file = file + HASH_SUFFIX
+        hash_file = file + _HASH_SUFFIX
 
         # TODO(eric.cousineau): If we enable Git LFS as a frontend, then this should
         # conditionally add *.sha512 as a dependency. Otherwise, need to figure out another
@@ -166,7 +166,7 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
         print("\nWARNING: The following `files_devel` files are not in `files`:\n" +
               "    {}\n".format("\n  ".join(devel_only)) +
               "  If you remove `files_devel`, then these files will not be part of the target.\n" +
-              "  If you are using a `glob`, they may not have a corresponding *{} file\n".format(HASH_SUFFIX))
+              "  If you are using a `glob`, they may not have a corresponding *{} file\n".format(_HASH_SUFFIX))
 
     all_files = files + devel_only
     native.filegroup(
@@ -184,7 +184,7 @@ def _get_external_data_file(rule):
 def _external_data_test(file, settings):
     # This test merely checks that this file is indeed available on the remote (ignoring cache).
     name = file + _TEST_SUFFIX
-    hash_file = file + HASH_SUFFIX
+    hash_file = file + _HASH_SUFFIX
 
     args = _get_cli_base_args(hash_file, settings)
     args += [
@@ -249,8 +249,8 @@ def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
 def get_original_files(hash_files):
     files = []
     for hash_file in hash_files:
-        if not hash_file.endswith(HASH_SUFFIX):
-            fail("Hash file does end with '{}': '{}'".format(HASH_SUFFIX, hash_file))
-        file = hash_file[:-len(HASH_SUFFIX)]
+        if not hash_file.endswith(_HASH_SUFFIX):
+            fail("Hash file does end with '{}': '{}'".format(_HASH_SUFFIX, hash_file))
+        file = hash_file[:-len(_HASH_SUFFIX)]
         files.append(file)
     return files
