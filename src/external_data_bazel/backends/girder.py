@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 
 from external_data_bazel import util, hashes
 from external_data_bazel.core import Backend
@@ -22,14 +23,14 @@ class GirderHashsumBackend(Backend):
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_id = config['folder_id']
         # Get (optional) authentication information.
-        url_config_node = get_chain(self.project.user.config, ['girder', 'url', self._url])
-        self._api_key = get_chain(url_config_node, ['api_key'])
+        url_config_node = util.get_chain(self.project.user.config, ['girder', 'url', self._url])
+        self._api_key = util.get_chain(url_config_node, ['api_key'])
         self._token = None
         self._girder_client = None
 
     def _authenticate_if_needed(self):
         if self._api_key is not None and self._token is None:
-            token_raw = curl(
+            token_raw = util.curl(
                 "-L -s --data key={api_key} {api_url}/api_key/token".format(api_key=self._api_key, api_url=self._api_url))
             self._token = json.loads(token_raw)["authToken"]["token"]
 
@@ -96,5 +97,5 @@ class GirderHashsumBackend(Backend):
 
 def get_backends():
     return {
-        "girder_hashum": GirderHashsumBackend,
+        "girder_hashsum": GirderHashsumBackend,
     }
