@@ -8,17 +8,16 @@ import yaml
 
 from external_data_bazel import core, util
 
-HASH_SUFFIX = core.HASH_SUFFIX
 
 def add_arguments(parser):
-    parser.add_argument('hash_files', type=str, nargs='+')
+    parser.add_argument('input_files', type=str, nargs='+')
 
 
 def run(args, project):
     good = True
-    for hash_file in args.hash_files:
+    for input_file in args.input_files:
         def action():
-            do_check(args, project, hash_file)
+            do_check(args, project, input_file)
         if args.keep_going:
             try:
                 action()
@@ -31,21 +30,16 @@ def run(args, project):
     return good
 
 
-def do_check(args, project, hash_file):
-    hash_file = os.path.abspath(hash_file)
-    if not hash_file.endswith(HASH_SUFFIX):
-        raise RuntimeError("File does not match *{}: {}".format(HASH_SUFFIX, hash_file))
-    filepath = hash_file[:-len(HASH_SUFFIX)]
-    project_relpath = project.get_relpath(filepath)
-
-    with open(hash_file) as fd:
-        hash = fd.read().strip()
-
-    remote = project.load_remote(project_relpath)
+def do_check(args, project, filepath_in):
+    filepath = os.path.abspath(filepath_in)
+    info = project.get_file_info(filepath)
+    remote = info.remote
+    project_relpath = info.project_relpath
+    hash = info.hash
 
     def dump_remote_config():
         dump = [{
-            "file": project.get_relpath(hash_file),
+            "file": project_relpath,
             "remote": project.debug_dump_remote_config(remote),
         }]
         yaml.dump(dump, sys.stdout, default_flow_style=False)
@@ -53,4 +47,4 @@ def do_check(args, project, hash_file):
     if not remote.has_file(hash, project_relpath):
         if not args.verbose:
             dump_remote_config()
-        raise RuntimeError("Remote does not have '{}' ({})".format(hash_file, hash))
+        raise RuntimeError("Remote does not have '{}' ({})".format(filepath, hash))

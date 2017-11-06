@@ -368,7 +368,7 @@ class Project(object):
         """ Load remote for a given file to either fetch or push a file """
         assert not os.path.isabs(project_relpath)
         assert not project_relpath.endswith(HASH_SUFFIX)
-        package = self.load_package(project_relpath)
+        package = self._load_package(project_relpath)
         return package.load_remote_by_relpath(project_relpath)
 
     def get_file_info(self, input_file, must_have_hash=True):
