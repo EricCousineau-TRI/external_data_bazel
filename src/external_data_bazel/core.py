@@ -282,6 +282,10 @@ class Project(object):
         self.root = self.config['root']
         self._root_alternatives = self.config.get('root_alternatives', [])
 
+        # Load frontend.
+        frontend_config = {}
+        self._frontend = HashFileFrontend(frontend_config, self)
+
         # Set up for root package.
         self._packages = {}
         self._root_package = None
@@ -346,7 +350,7 @@ class Project(object):
         """ Load the backend of a given type. """
         return self._backends[backend_type]
 
-    def _load_package(self, relpath):
+    def load_package(self, relpath):
         """ Load the package for the given filepath. """
         config_files = _find_package_config_files(self, relpath)
         package = None
@@ -366,16 +370,42 @@ class Project(object):
 
     def load_remote(self, project_relpath):
         """ Load remote for a given file to either fetch or push a file """
+        # TODO(eric.cousineau): Remove this in lieu of `get_file_info`?
         assert not os.path.isabs(project_relpath)
-        assert not project_relpath.endswith(HASH_SUFFIX)
-        package = self._load_package(project_relpath)
+        package = self.load_package(project_relpath)
         return package.load_remote_by_relpath(project_relpath)
 
     def get_file_info(self, input_file, must_have_hash=True):
         """ Get file information for a given file (package, remote, default output, etc.). """
+        return self._frontend.get_file_info(input_file, must_have_hash=must_have_hash)
+
+    def update_file_info(self, info, hash):
+        self._frontend.update_file_info(info, hash)
+
+
+class Frontend(object):
+    """ Determine how a project determines the hash for a given file. """
+    def __init__(self, config, project):
+        self.config = config
+        self.project = project
+
+    def get_file_info(self, input_file, must_have_hash=True):
+        """ Obtain FileInfo for a given input file. """
+        raise NotImplemented
+
+    def update_file_info(self, info, hash):
+        """ Update the project's representation of a given file. """
+        raise NotImplemented
+
+
+class HashFileFrontend(Frontend):
+    def __init__(self, config, project):
+        Frontend.__init__(self, config, project)
+
+    def get_file_info(self, input_file, must_have_hash=True):
         assert os.path.isabs(input_file)
-        input_relpath = self.get_relpath(input_file)
-        package = self._load_package(input_relpath)
+        input_relpath = self.project.get_relpath(input_file)
+        package = self.project.load_package(input_relpath)
         # SHA-512 file frontend.
         if input_file.endswith(HASH_SUFFIX):
             hash_file = input_file
@@ -385,7 +415,7 @@ class Project(object):
             hash_file = input_file + HASH_SUFFIX
             project_file = input_file
         orig_filepath = input_file
-        project_relpath = self.get_relpath(project_file)
+        project_relpath = self.project.get_relpath(project_file)
         remote = package.load_remote_by_relpath(project_relpath)
         default_output_file = project_file
         if not os.path.isfile(hash_file):
@@ -402,9 +432,8 @@ class Project(object):
     def update_file_info(self, info, hash):
         # Write SHA-512 to the canonical filepath.
         # TODO(eric.cousineau): Is there any case where we would want this to be near the original input file?
-        hash_file = self.get_canonical_path(info.project_relpath + HASH_SUFFIX)
+        hash_file = self.project.get_canonical_path(info.project_relpath + HASH_SUFFIX)
         with open(hash_file, 'w') as fd:
-            print("Updating hash file: {}".format(hash_file))
             fd.write(hash + "\n")
 
 
