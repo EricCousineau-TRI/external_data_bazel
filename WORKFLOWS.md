@@ -172,7 +172,7 @@ Additionally, if you use the `add_external_data_tests` macro, you may run this t
 
 This will check all external data tests in the current package and its subpackages.
 
-*   Warning: Due to limitations (possibly bugs?) in Bazel, it is hard to expose all package files in a convenient fashion to the files that may use them. Because of this, your tests *may not* retrigger if you edit a package file. To fix this, either do not use Bazel's cached results (`--nocache_test_results`), or use the CLI variant.
+*   Warning: All `external_data` tests are marked as `external`, thus won't be cached. Consider excluding this from tests that are normally run.
 
 ## TODO
 

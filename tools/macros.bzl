@@ -195,9 +195,8 @@ def _external_data_test(file, settings):
     cli_sentinel = settings['cli_sentinel']
     cli_data = settings['cli_data']
 
-    # TODO(eric.cousineau): Consider adding "external" as a test tag?
-    # https://docs.bazel.build/versions/master/test-encyclopedia.html#tag-conventions
-    # This should do what we want.
+    # TODO(eric.cousineau): Consider removing "external" as a test tag if it's
+    # too cumbersome for general testing.
 
     # Have to use `py_test` to run an existing binary with arguments...
     # Blech.
@@ -208,7 +207,7 @@ def _external_data_test(file, settings):
         main = _TOOL + ".py",
         deps = ["@external_data_bazel_pkg//:cli_deps"],
         args = args,
-        tags = _TEST_TAGS,
+        tags = _TEST_TAGS + ["external"],
         # Changes `execroot`, and symlinks the files that we need to crawl the directory
         # structure and get hierarchical packages.
         local = 1,
@@ -219,11 +218,6 @@ def _external_data_test(file, settings):
 def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
     """ Add tests to ensure that files are still available to download (and not
     simply cached.
-
-    WARNING: This setup does not have a correct dependency setup on all package configurations.
-    (See comment about package config files, and the complications involved).
-    Because of this, changing a URL for a file *may* not re-trigger the test when needed.
-    If this happens, please consider running the CLI directly when you have made a change.
     """
     # Following @drake//tools/lint:cpplint.bzl
     if existing_rules == None:
