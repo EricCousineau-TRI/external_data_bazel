@@ -1,17 +1,13 @@
 # Motivating Workflows
 
-## Notes
-
-* This is intended to work namely in Bazel. You may run this outside of Bazel, via `bazel-bin/`, but due to verbosity, it's recommended to use the Bazel command.
-* Since this is intended to run under Bazel (`download` out of necessity, `upload` for the reasons listed above), we must specify absolute paths.
-    * This can be done via the shorthand `~+` in `bash`, or `${PWD}` / `$(pwd)`.
-
 
 ## Configuration
 
-* Inspect the configuration in `./girder/girder.repo.conf`. This is for the repository.
-* Inspect `./girder/girder.user.conf`. This is a template, which should live in `~/.girder.conf`. Ensure you add the appropriate API key so that you have authorized access.
-
+* Inspect the configuration examples in `./config`. The files you will have:
+    * `~/.config/external_data_bazel.user.yml` - User configuration (global cache, backend-specific authentication - NOT to be versioned!).
+        * Default values will be used if this file does not exist or define them.
+    * `${project_root}/.external_data.project.yml` - Project configuration.
+    * `${package_root}/.external_data.yml` - Package configuration. You will need one adjacent to the project root.
 
 ## Start Drafting a Large File
 
@@ -25,7 +21,8 @@ test.
             mode = "devel",  # Delete once you've uploaded.
         )
 
-    NOTE: Under the hood, this simply uses `exports_files(...)` to make the file a proper target, using the same name. This is useful for later points in time, when you want to edit a file that has already been versioned.
+    NOTE: Under the hood, this simply uses `exports_files(...)` in "devel" mode
+    to make the file a proper target, using the same name. This is useful for later points in time, when you want to edit a file that has already been versioned.
 
 2. Write a test, e.g. `://test:inspect_dragon`, that consumes this file:
 
@@ -46,15 +43,13 @@ test.
 
         cd data
         touch dragon.obj
-        bazel run //toos/external_data:upload -- ~+/dragon.obj
+        ../toos/external_data upload ./dragon.obj
 
-    If the file does not already exist on the desired server, this creates
-    `~+/dragon.obj.sha512`, and will add the path of the file relative to this
-    repository (`:/data/dragon.obj`) for server-side versioning.
+    If the file does not already exist on the desired server, this will upload the file. This will also update `dragon.obj.sha512` to reflect that the server-side information.
 
-    NOTE: You may upload multiple files.
+    NOTE: You may upload multiple files via the CLI interface.
 
-2. Update `:/data/BUILD.bazel` to indicate that you're now using the uploaded version (this tells Bazel to expect `~+/dragon.obj.sha512`):
+2. Update `:/data/BUILD.bazel` to indicate that you're now using the uploaded version (this tells Bazel to expect `dragon.obj.sha512`):
 
         external_data(
             file = "dragon.obj",
@@ -77,7 +72,7 @@ Let's say you've removed `dragon.obj` from `:/data`, but a month later you wish 
 1. Download the corresponding hash file:
 
         cd data
-        bazel run //tools/external_data:download -- ~+/dragon.obj.sha512
+        ../tools/external_data download ./dragon.obj.sha512
 
 2. Change `:/data/BUILD.bazel` back to development mode:
 
@@ -109,7 +104,7 @@ If you wish to expose all of these files within the Bazel build sandbox, you may
 
     bazel build :meshes
 
-NOTE: This interface will cache the files under `~/.cache/bazel-girder`, and thus you will not need to re-download these files.
+NOTE: This interface will cache the files under the cache directory specified in your user configuration, and thus you will not need to re-download these files.
 
 
 ## Edit Files in a `*.sha512` group
@@ -137,9 +132,9 @@ NOTE: You can extend this to use an `*.obj` files in the workspace to assume tha
 
 ## Download a Set of Files
 
-If you wish to download *all* files of a given extension at the specified revision under a certain directory, you may use `find` (and ensure that you use `~+` so that it returns absolute paths):
+If you wish to download *all* files of a given extension at the specified revision under a certain directory, you may use `find`. For example:
 
-    find ~+ -name '*.obj.sha512' | xargs bazel run //tools/external_data:download --
+    find . -name '*.obj.sha512' | ./tools/external_data:download
 
 For each `${file}.sha512` that is found, the file will be downloaded to `${file}`.
 
@@ -152,60 +147,35 @@ As above, these files are cached.
 
 This is used in Bazel via `macros.bzl`:
 
-    bazel run //tools/external_data:download -- ${file}.sha512 --output ${file}
+    ./tools/external_data download ${file}.sha512 --output ${file}
 
 
 ## Download Files and Expose as Symlinks (Do Not Copy)
 
 If you just need easy read-only access to files (and don't want to deal with Bazel's paths), you can use `--symlink`:
 
-    bazel run //tools/external_data:download -- --symlink ~+/*.sha512
+    ./tools/external_data download --symlink *.sha512
 
 
-## Testing experimental large files in PRs
+## Integrity Checks
 
-**NOT YET IMPLEMENTED**
+Note that just downloading the files may not check if the file is still available on the remote.
+If you wish to ensure that other users can reproduce your results, consider `check`'ing your files:
 
-If you have a WIP pull request, and you wish to test this locally before uploading to the production server, then you can switch to a `"devel"` remote, which can use another `remote` as a back-up for downloading files that are not yet present.
+    find . -name '*.sha512' | xargs ./tools/external_data check
 
-You can add a server such as this in the repository-level setup:
+This will ensure that the correct file is stored on the remote, regardless of what is stored in the cache.
 
-    [remote "devel"]
-        server = http://localhost:XXXX/
-        folder-id = <folder id>
-        remote-overlay = master
+Additionally, if you use the `add_external_data_tests` macro, you may run this test in Bazel:
 
-NOTE: Ensure that you update your user-level authentication bits in `~/.girder.conf`.
+    bazel test --test_tag_filters=external_data_test ...
+
+This will check all external data tests in the current package and its subpackages.
+
+*   Warning: Due to limitations (possibly bugs?) in Bazel, it is hard to expose all package files in a convenient fashion to the files that may use them. Because of this, your tests *may not* retrigger if you edit a package file. To fix this, either do not use Bazel's cached results (`--nocache_test_results`), or use the CLI variant.
 
 ## TODO
 
-* Make `://tools/external_data` an actual external in Bazel, possibly something like `bazel-external-data`, such that we could do:
-
-        bazel run @external_data//:download -- ~+/${file}.sha512
-        # OR
-        girder-cli git download ${file}.sha512
-
-        bazel run @external_data//:upload -- ~+/file
-        # OR
-        girder-cli git download ${file}
-
-    * This should allow per-project configuration settings to be specified via the project's incantation of `external_data/BUILD.bazel` and `external_data/macros.bzl`. Specifically, should define where the project root is (via the sentinel for Bazel hackery)
-
-* Rather than read the symlink on the sentinel, try reading the symlink on the `sha512` file. This (a) avoids the need for a Bazel-exposed sentinel, and (b) would pave the way for per-file configuration.
-
-* Enable different backend providers.
-    * Work with a backend provider which also has the ability to provide symlinks, if possible.
-    * Make the entire setup agnostic to which backend is actually used.
-
-* Enable per-file / per-directory configuration for reproduction of external experiments.
-    * e.g. If reproducing results for DART, we can link to the original files via another backend (e.g. HTTP, HTTP archive).
-        * This way we don't HAVE to re-host files, but CAN if we wish to provide a reliable mirror.
-    * Can define a `.external-data` file per directory which can provide a new repository. This would have its own `master` vs `devel` remote.
-        * Can either use a unique remote, or provide an overlay.
-
-* Consider renaming `.girder.conf` to `.external-data`, move repo stuff to repo root.
-
-* If possible, merge scripts into `girder_client` if appropriate. (Though it may be too heavily Bazel-based.)
 * Revisit the use of `git annex` as a frontend with more complex merging mechanisms.
     * Can consider using `git annex` / `git lfs` as a backend, if it's useful for whatever reason.
         * Could a backend be used to leverage LFS's storage mechanism?

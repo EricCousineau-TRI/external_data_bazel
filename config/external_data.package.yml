@@ -1,16 +1,14 @@
-# Project configuration.
-project:
-    # For server-side versioning.
-    name: example
+# This is a package's configuration file. This is used to detect package
+# boundaries (similar to Bazel's `BUILD{,.bazel}` files).
+# Named as ".external_data.yml" when used in projects.
 
 # The remote for all child folders, unless changed.
 # Change this to "devel" if you are uploading files to this remote.
 # If you define a custom `.external_data_bazel.yml` in a subproject, ensure that
 # override the "remote"! Otherwise, the remote will leak through.
-package:
-    remote: master
+remote: master
 
-remote:
+remotes:
     master:
         # Backend used for storing files.
         backend: girder
