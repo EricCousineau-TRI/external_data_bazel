@@ -37,7 +37,7 @@ class HashType(object):
         orig_file = self.get_orig_file(hash_file)
         assert orig_file is not None
         value = self.do_read_file(hash_file)
-        return self.create(value, filepath=orig_file)
+        return self.create(value, filepath="hash_file[{}]".format(hash_file))
 
     def write_file(self, hash_file, hash):
         value = hash.get_value()

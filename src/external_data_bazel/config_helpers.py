@@ -86,6 +86,8 @@ def parse_config_file(config_file, add_filepath = True):
         Adds `config_file` to the root level for debugging purposes. """
     with open(config_file) as f:
         config = yaml.load(f)
+    if config is None:
+        config = {}
     if add_filepath:
         config['config_file'] = config_file
     return config

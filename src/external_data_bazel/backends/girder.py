@@ -63,6 +63,10 @@ class GirderHashsumBackend(Backend):
 
     def download_file(self, hash, project_relpath, output_file):
         args = self._download_args(hash)
+        # Unfortunately, not having authentication does not yield user-friendly errors.
+        # Should fix this later.
+        if not self.has_file(hash, project_relpath):
+            raise util.DownloadError("File not available on Girder server: {} (hash: {})".format(project_relpath, hash))
         util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
     def _get_girder_client(self):
