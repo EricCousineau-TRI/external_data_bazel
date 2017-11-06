@@ -5,6 +5,7 @@ import sys
 import json
 import time
 
+
 def is_child_path(child_path, parent_path, require_abs=True):
     if require_abs:
         assert os.path.isabs(child_path) and os.path.isabs(parent_path)
@@ -12,9 +13,6 @@ def is_child_path(child_path, parent_path, require_abs=True):
         parent_path += os.path.sep
     return child_path.startswith(parent_path)
 
-# TODO(eric.cousineau): Make a hashing setup, that defines a key for the algorithm, a suffix,
-# and a computation / check method.
-# Can pass SHAs as an object, rather than just a string.
 
 def in_bazel_runfiles(cur_dir=None, project=None):
     # Typically, Bazel runfiles is structured something like
@@ -33,25 +31,6 @@ def in_bazel_runfiles(cur_dir=None, project=None):
                 return True
     return False
 
-
-def compute_hash(filepath):
-    assert os.path.isabs(filepath)
-    if not os.path.exists(filepath):
-        raise RuntimeError("File does not exist: {}".format(filepath))
-    hash = subshell(['sha512sum', filepath]).split(' ')[0]
-    return hash
-
-
-def check_hash(hash_expected, filepath, do_throw=True):
-    """ Check if a file has an expected hash """
-    hash = compute_hash(filepath)
-    if hash != hash_expected:
-        if do_throw:
-            raise RuntimeError("SHA-512 mismatch: {} != {} for {}".format(hash, hash_expected, filepath))
-        else:
-            return False
-    else:
-        return True
 
 def merge_unique(core, new):
     # Merge, ensuring there are no shared keys.

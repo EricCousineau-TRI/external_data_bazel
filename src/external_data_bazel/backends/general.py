@@ -12,10 +12,10 @@ def _check_hash(url, hash_expected):
     with tmp_file:
         tmp_path = tmp_file.get_path()
         util.subshell('curl -s -o {} {}'.format(tmp_path, url))
-        hash = util.compute_hash(tmp_path)
+        hash = hash_expected.compute(tmp_path)
         good = (hash_expected == hash)
     if not good:
-        util.eprint("WARNING: SHA-512 mismatch for url: {}".format(url))
+        util.eprint("WARNING: Hash mismatch for url: {}".format(url))
         util.eprint("  expected:\n    {}".format(hash_expected))
         util.eprint("  url:\n    {}".format(hash))
     return good

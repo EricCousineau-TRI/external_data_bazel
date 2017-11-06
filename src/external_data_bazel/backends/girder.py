@@ -1,7 +1,7 @@
 import json
 import os
 
-from external_data_bazel import util
+from external_data_bazel import util, hashes
 from external_data_bazel.core import Backend
 
 # TODO(eric.cousineau): Split this into a common base backend.
@@ -34,7 +34,7 @@ class GirderHashsumBackend(Backend):
             self._token = json.loads(token_raw)["authToken"]["token"]
 
     def _download_url(self, hash):
-        return "{api_url}/file/hashsum/sha512/{hash}/download".format(hash=hash, api_url=self._api_url)
+        return "{api_url}/file/hashsum/{algo}/{hash}/download".format(algo=hash.get_algo(), hash=hash.get_value(), api_url=self._api_url)
 
     def _download_args(self, hash):
         url = self._download_url(hash)
@@ -80,7 +80,7 @@ class GirderHashsumBackend(Backend):
         print("api_url ............: %s" % self._api_url)
         print("folder_id ..........: %s" % self._folder_id)
         print("filepath ...........: %s" % filepath)
-        print("sha512 .............: %s" % hash)
+        print("hash ...............: %s" % hash)
         print("item_name ..........: %s" % item_name)
         print("project_root .......: %s" % self.project.root)
         print("project_relpath .: %s" % project_relpath)

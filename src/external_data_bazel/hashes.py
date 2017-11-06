@@ -20,6 +20,9 @@ class HashType(object):
     def create(self, value, filepath=None):
         return Hash(self, value, filepath=filepath)
 
+    def create_empty(self):
+        return Hash(self, None)
+
     def get_hash_file(self, orig_file):
         """ Get hash file from an original file. """
         raise NotImplemented
@@ -33,13 +36,18 @@ class HashType(object):
         """ Return a Hash from a file. """
         orig_file = self.get_orig_file(hash_file)
         assert orig_file is not None
-        value = self.do_read_file()
+        value = self.do_read_file(hash_file)
         return self.create(value, filepath=orig_file)
+
+    def write_file(self, hash_file, hash):
+        value = hash.get_value()
+        with open(hash_file, 'w') as f:
+            f.write(value + "\n")
 
     def do_read_file(self, hash_file):
         """ Read contents from a file. """
         with open(hash_file) as f:
-            value = hash_file.read().strip()
+            value = f.read().strip()
         return value
 
     def get_value(self, value):
@@ -56,6 +64,10 @@ class Hash(object):
         self.filepath = filepath
         self._value = value
 
+    def compute(self, filepath):
+        # Compute hash for a filepath, using the same type as this hash.
+        return self.hash_type.compute(filepath)
+
     def check(self, other_hash, do_throw=True):
         if other_hash.hash_type == self.hash_type and self._value == other_hash._value:
             return True
@@ -63,18 +75,36 @@ class Hash(object):
             if do_throw:
                 raise RuntimeError("Hash mismatch: {} != {}".format(self.full_str(), other_hash.full_str()))
 
-    def value(self):
+    def check_file(self, filepath, do_throw=True):
+        return self.check(self.compute(filepath), do_throw=do_throw)
+
+    def has_value(self):
+        return self._value is not None
+
+    def get_value(self):
         return self.hash_type.get_value(self._value)
 
-    def check_file(self, filepath, do_throw=True):
-        other_hash = self.hash_type.compute(filepath)
-        return self.check(other_hash, do_throw=do_throw)
+    def get_algo(self):
+        return self.hash_type.name
+
+    def write_hash_file(self):
+        assert self.has_value()
+        # This *has* to have been computed from a file.
+        assert self.filepath is not None
+        hash_file = self.hash_type.get_hash_file(self.filepath)
+        self.hash_type.write_file(hash_file, self)
 
     def __str__(self):
         return "{}:{}".format(self.hash_type.name, self._value)
 
     def __eq__(self, rhs):
         return self.check(rhs, do_throw=False)
+
+    def __hash__(self):
+        # Do not permit empty hashes to be used in a dict.
+        assert self.has_value()
+        params = (self.hash_type, self._value)
+        return hash(params)
 
     def __ne__(self, rhs):
         return not self.__eq__(rhs)
@@ -107,7 +137,7 @@ class Sha512(HashType):
 
 sha512 = Sha512()
 
-hashes = [sha512]
+hash_types = [sha512]
 
 if __name__ == "__main__":
     tmp_file = '/tmp/test_hash_file'

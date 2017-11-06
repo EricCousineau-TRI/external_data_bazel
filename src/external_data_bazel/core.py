@@ -1,6 +1,6 @@
 import os
 
-from external_data_bazel import util, config_helpers
+from external_data_bazel import util, config_helpers, hashes
 
 HASH_SUFFIX = '.sha512'
 HASH_ALGO = 'sha512'
@@ -82,7 +82,8 @@ class Remote(object):
         assert not os.path.exists(output_file)
         try:
             self._backend.download_file(hash, project_relpath, output_file)
-            util.check_hash(hash, output_file)
+            # TODO(eric.cousineau): Revert to overlay of checksum fails?
+            hash.check_file(output_file)
         except util.DownloadError as e:
             if self.has_overlay():
                 # TODO(eric.cousineau): If hierarchical caching is used (for whatever reason), this
@@ -117,7 +118,7 @@ class Remote(object):
                 util.subshell(['chmod', '+w', output_file])
             # On error, remove cached file, and re-download.
             if not skip_sha_check:
-                if not util.check_hash(hash, output_file, do_throw=False):
+                if not hash.check_file(output_file, do_throw=False):
                     util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
                     # `os.remove()` will remove read-only files without prompting.
                     os.remove(cache_path)
@@ -156,11 +157,12 @@ class Remote(object):
             self.download_file_direct(hash, project_relpath, output_file)
             return 'download'
 
-    def upload_file(self, project_relpath, filepath):
+    def upload_file(self, hash_type, project_relpath, filepath):
         """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
         and updates the corresponding hash file. """
         assert os.path.isabs(filepath)
-        hash = util.compute_hash(filepath)
+        hash = hash_type.compute(filepath)
+        # TODO(eric.cousineau): Have the project check if this is a valid hash type?
         if not self._backend.can_upload:
             raise RuntimeError("Backend does not support uploading")
         if self._backend.has_file(hash, project_relpath):
@@ -253,11 +255,13 @@ class Package(object):
         """ Get the cache path for a given hash file for the given package.
         Presently, this uses `Project.user.cache_dir`. """
         # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
+        hash_algo = hash.get_algo()
+        hash_value = hash.get_value()
         out_dir = os.path.join(
-            self.project.user.cache_dir, HASH_ALGO, hash[0:2], hash[2:4])
+            self.project.user.cache_dir, hash_algo, hash_value[0:2], hash_value[2:4])
         if create_dir and not os.path.isdir(out_dir):
             os.makedirs(out_dir)
-        return os.path.join(out_dir, hash)
+        return os.path.join(out_dir, hash_value)
 
 
 class User(object):
@@ -382,6 +386,12 @@ class Project(object):
     def update_file_info(self, info, hash):
         self._frontend.update_file_info(info, hash)
 
+    def is_hash_file(self, input_file):
+        """ Determine if a file is a hash file.
+        @return The original file path if it's a hash file, None otherwise. """
+        assert os.path.isabs(input_file)
+        return self._frontend.is_hash_file(input_file)
+
 
 class Frontend(object):
     """ Determine how a project determines the hash for a given file. """
@@ -389,7 +399,7 @@ class Frontend(object):
         self.config = config
         self.project = project
 
-    def get_file_info(self, input_file, must_have_hash=True):
+    def get_file_info(self, input_file, must_have_hash):
         """ Obtain FileInfo for a given input file. """
         raise NotImplemented
 
@@ -397,48 +407,95 @@ class Frontend(object):
         """ Update the project's representation of a given file. """
         raise NotImplemented
 
+    def get_hash_type(self, project_relpath):
+        raise NotImplemented
+
+    def is_hash_file(self, input_file):
+        raise NotImplemented
+
 
 class HashFileFrontend(Frontend):
+    """ Frontend to determine file information based on neighboring hash file. """
     def __init__(self, config, project):
         Frontend.__init__(self, config, project)
+        self._hash_types = hashes.hash_types
+        self._hash_type_default = self._hash_types[0]
 
-    def get_file_info(self, input_file, must_have_hash=True):
+    def _infer_hash_type(self, input_file):
+        # Infer hash type from filepath *ONLY*, not the file system.
+        hash_type = None
+        hash_orig_file = None
+        for hash_type_cur in self._hash_types:
+            hash_orig_file = hash_type_cur.get_orig_file(input_file)
+            if hash_orig_file is None:
+                continue
+            else:
+                hash_type = hash_type_cur
+                break
+        return (hash_type, hash_orig_file)
+
+    def is_hash_file(self, input_file):
+        return self._infer_hash_type(input_file)[1]
+
+    def get_file_info(self, input_file, must_have_hash):
         assert os.path.isabs(input_file)
         input_relpath = self.project.get_relpath(input_file)
         package = self.project.load_package(input_relpath)
-        # SHA-512 file frontend.
-        if input_file.endswith(HASH_SUFFIX):
+        hash_type, hash_orig_file = self._infer_hash_type(input_file)
+        if hash_type:
             hash_file = input_file
-            project_file = hash_file[:-len(HASH_SUFFIX)]
+            project_file = hash_orig_file
             orig_filepath = project_file
         else:
-            hash_file = input_file + HASH_SUFFIX
+            # Get default hash type.
+            hash_type = self._hash_type_default
+            hash_file = hash_type.get_hash_file(input_file)
             project_file = input_file
+        # TODO(eric.cousineau): Ensure that there are no other hash files for a given file???
         orig_filepath = input_file
         project_relpath = self.project.get_relpath(project_file)
         remote = package.load_remote_by_relpath(project_relpath)
         default_output_file = project_file
         if not os.path.isfile(hash_file):
             if must_have_hash:
-                raise RuntimeError("ERROR: SHA-512 file not found: {}".format(hash_file))
+                raise RuntimeError("ERROR: Hash file not found: {}".format(hash_file))
             else:
-                hash = None
+                hash = hash_type.create_empty()
         else:
             # Load the hash.
-            with open(hash_file) as f:
-                hash = f.read().strip()
+            hash = hash_type.read_file(hash_file)
         return FileInfo(hash, remote, package, project_relpath, default_output_file, orig_filepath)
 
     def update_file_info(self, info, hash):
         # Write SHA-512 to the canonical filepath.
         # TODO(eric.cousineau): Is there any case where we would want this to be near the original input file?
-        hash_file = self.project.get_canonical_path(info.project_relpath + HASH_SUFFIX)
-        with open(hash_file, 'w') as fd:
-            fd.write(hash + "\n")
+        filepath = self.project.get_canonical_path(info.project_relpath)
+        # Check that our filepath is the same as our canonical one...
+        assert hash.filepath == filepath
+        hash.write_hash_file()
+
+    def get_hash_type(self, project_relpath):
+        hash_type = None
+        # Start checking through other hash types.
+        for hash_type_cur in self._hash_types:
+            if hash_type == hash_type_cur:
+                continue
+            hash_relpath = hash_type_cur.get_hash_file(project_relpath)
+            hash_file = self.project.get_canonical_path(hash_relpath)
+            if os.path.exists(hash_file):
+                if hash_type is not None:
+                    raise RuntimeError("File has multiple hash files present: {}".format(project_relpath))
+                hash_type = hash_type_cur
+        if hash_type is None and not return_none:
+            return self._hash_type_default
+        else:
+            return hash_type
 
 
 class FileInfo(object):
     def __init__(self, hash, remote, package, project_relpath, default_output_file, orig_filepath):
+        # This is the *project* hash, NOT the has of the present file.
+        # If None, then that means the file is not yet part of the project.
         self.hash = hash
         self.remote = remote
         self.package = package
@@ -507,8 +564,7 @@ def load_project(guess_filepath, user_config_in = None):
             except Exception as e:
                 util.eprint("ERROR: Could not execute project's 'setup_config'")
                 util.eprint("  File: {}".format(setup_config_file))
-                import traceback
-                traceback.print_exc()
+                raise e
         get_backends = setup_config.get('get_backends')
     if get_backends is None:
         from external_data_bazel.backends import get_default_backends
@@ -518,8 +574,3 @@ def load_project(guess_filepath, user_config_in = None):
     root_package_config = config_helpers.parse_config_file(os.path.join(project.root, PACKAGE_CONFIG_FILE))
     project.init_root_package(root_package_config)
     return project
-
-
-def strip_hash(filepath):
-    assert filepath.endswith(HASH_SUFFIX)
-    return filepath[:-len(HASH_SUFFIX)]
