@@ -206,7 +206,7 @@ bazel-test :test_basics
 # Ensure that we have all the files we want.
 rm new.bin
 find . -name '*.sha512' | xargs ../tools/external_data check
-# --check_file=only should not have written a new file.
+# `check` should not have written a new file.
 [[ ! -f new.bin ]]
 
 
@@ -216,18 +216,19 @@ cd ../data/
 # Remove any *.bin files that may have been from the original folder.
 find . -name '*.bin' | xargs rm -f
 
-# @note We must pre-download `basic.bin` to cache it so that `package/basic.bin` is valid.
-# @note We must also pre-download `direct.bin` since it's download is Bazel-specific.
-bazel build :basic.bin :direct.bin
+# @note Cache `./basic.bin` so that `./package/basic.bin` is valid,
+# just in case `find` does not process `./basic.bin` before `./package/basic.bin`.
+../tools/external_data download ./basic.bin
 
-# Ensure that we can download all files here (without --check_file).
-find . -name '*.sha512' | xargs ../tools/external_data download
+# Ensure that we can download all files here (without `check`).
+# Use `-f` to overwrite (since we just downloaded `basic.bin`).
+find . -name '*.sha512' | xargs ../tools/external_data download -f
+# Same for `direct.bin`, when not consumed in Bazel.
+../tools/external_data check ./direct.bin.sha512
 
 ../tools/external_data check ./package/extra.bin.sha512
-# Ensure that 'package/basic.bin' is invalid with --check_file.
+# Ensure that 'package/basic.bin' is invalid with `check`.
 ../tools/external_data check ./package/basic.bin.sha512 && should_fail
-# Same for `direct.bin`, when not consumed in Bazel.
-../tools/external_data check ./package/direct.bin.sha512 && should_fail
 
 # Now run the external data tests in Bazel, and ensure that everything passes, since
 # all files defined in Bazel are covered by the remote structures.
@@ -248,7 +249,10 @@ diff glob_4.bin ../data_new/expected.txt > /dev/null
 ../tools/external_data check ./glob_4.bin.sha512 && should_fail
 # - With caching, it should be able to build.
 bazel build :data
-# - Now ensure that the tests all fail.
+# - Now ensure that the this test is (a) defined and (b) will fail.
+bazel build :glob_4.bin__download_test
+bazel test :glob_4.bin__download_test && should_fail
+# - Ensure that testing across all download tests also fail.
 bazel test --test_tag_filters=external_data_test ... && should_fail
 
 echo "[ Done ]"
