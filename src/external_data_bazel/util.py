@@ -85,6 +85,9 @@ def wait_file_read_lock(filepath, timeout=60, interval=0.01, warn_at=2):
                 eprint("  If this persists, please consider removing this file.")
                 warned = True
 
+# TODO(eric.cousineau): This does not actually work. Race conditions are encountered easily.
+# How to fix this? os.
+
 class FileWriteLock(object):
     def __init__(self, filepath):
         self.lock = _lock_path(filepath)
