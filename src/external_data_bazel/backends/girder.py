@@ -2,6 +2,10 @@ import json
 import os
 from datetime import datetime
 
+print("Attempt to use girder_client")
+import girder_client
+print(girder_client.__file__)
+
 from external_data_bazel import util, hashes
 from external_data_bazel.core import Backend
 

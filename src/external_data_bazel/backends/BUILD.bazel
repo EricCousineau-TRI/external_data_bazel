@@ -1,3 +1,5 @@
+load("@girder_client//:requirements.bzl", girder_client_requirement="requirement")
+
 imports = ["../.."]
 
 py_library(
@@ -20,6 +22,7 @@ py_library(
     ],
     deps = [
         ":core",
+        girder_client_requirement("girder_client"),
     ],
     imports = imports,
 )
