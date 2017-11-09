@@ -28,8 +28,8 @@ echo "[ Mock Storage ]"
 
 echo "[ Edge Case Workflow ]"
 (
-    _bazel run //test_workflow/...
-    # _bazel test //test_workflow/...
+    _bazel run :test_workflows
+    # _bazel test :test_workflows
 )
 
 # TODO: Run backend tests (e.g. GirderHashsum).

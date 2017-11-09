@@ -22,18 +22,20 @@ mock_dir=${tmp_dir}/bazel_external_data_mock
 # TODO: Prevent this from running outside of Bazel.
 
 # Copy what's needed for modifiable `test_mock` directory.
-srcs="src tools test_mock BUILD.bazel WORKSPACE"
+srcs="src tools test/test_mock BUILD.bazel WORKSPACE"
 rm -rf ${mock_dir}
 mkdir -p ${mock_dir}
 for src in ${srcs}; do
-    cp -r $(readlink_py ${src}) ${mock_dir}
+    subdir=$(dirname ${src})
+    mkdir -p ${mock_dir}/${subdir}
+    cp -r $(readlink_py ${src}) ${mock_dir}/${subdir}
 done
 
 cache_dir=${tmp_dir}/test_cache
 upload_dir=${tmp_dir}/upload
 
 # Start modifying.
-cd ${mock_dir}/test_mock
+cd ${mock_dir}/test/test_mock
 
 # Create a new package.
 mkcd data_new

@@ -34,9 +34,9 @@ filegroup(
     srcs = [
         "src",
         "tools",
-        "test_mock",
+        "//test:test_mock",
         "WORKSPACE",
         "BUILD.bazel"
     ],
-    visibility = ["//test_workflow:__subpackages__"],
+    visibility = ["//test:__subpackages__"],
 )
