@@ -10,31 +10,31 @@ _bazel() {
 
 echo "[ Example Interface ]"
 (
-    cd test_simple
+    cd bazel_pkg_test
     _bazel test //...
 )
 
 echo "[ Downstream Consumption ]"
 (
-    cd test_simple_downstream
+    cd bazel_pkg_downstream_test
     _bazel test //...
 )
 
 echo "[ Mock Storage ]"
 (
-    cd test_mock
+    cd bazel_pkg_advanced_test
     _bazel test //...
 )
 
 echo "[ Edge Case Workflow ]"
 (
-    _bazel run :test_workflows
-    # _bazel test :test_workflows
+    _bazel run :basic_workflows_test
+    # _bazel test :basic_workflows_test
 )
 
 echo "[ Backends ]"
 (
-    cd test_backends
+    cd backends
     (
         cd girder
         ./run_tests.sh
@@ -44,6 +44,6 @@ echo "[ Backends ]"
 # TODO: Not yet complete.
 # echo "[ CMake/ExternalData Workflow ]"
 # (
-#     cd test_cmake
+#     cd cmake_pkg_test
 #     ./run_test.sh
 # )

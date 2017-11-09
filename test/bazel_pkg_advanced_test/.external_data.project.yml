@@ -1,3 +1,3 @@
 # Project configuration.
-name: test_mock
+name: bazel_pkg_advanced_test
 setup_config: tools/external_data_config.py

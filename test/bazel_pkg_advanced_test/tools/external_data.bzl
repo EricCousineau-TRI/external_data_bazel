@@ -13,7 +13,7 @@ SETTINGS = dict(
         "//tools:external_data_config.py",
     ],
     cli_extra_args = [
-        "--project_name=test_mock",
+        "--project_name=bazel_pkg_advanced_test",
         "--user_config=$(location //tools:external_data.user.yml)"
     ],
 )

@@ -1,4 +1,4 @@
-workspace(name = "test_simple")
+workspace(name = "bazel_pkg_advanced_test")
 
 load("//tools:path.bzl", "dirname")
 

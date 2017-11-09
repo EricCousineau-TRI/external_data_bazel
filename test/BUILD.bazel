@@ -1,11 +1,11 @@
 exports_files(
-    srcs = ["test_mock"],
+    srcs = ["bazel_pkg_advanced_test"],
     visibility = ["//:__subpackages__"],
 )
 
 sh_test(
-    name = "test_workflows",
-    srcs = ["test_workflows.sh"],
+    name = "basic_workflows_test",
+    srcs = ["basic_workflows_test.sh"],
     data = [
         "//:workflow_mock",
     ],
