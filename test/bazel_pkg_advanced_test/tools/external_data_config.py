@@ -5,7 +5,7 @@ import os
 
 tmp_dir = "/tmp/external_data_bazel"
 if not os.path.isdir(tmp_dir):
-    os.path.makedirs(tmp_dir)
+    os.makedirs(tmp_dir)
 # Signal that we executed this file.
 with open(os.path.join(tmp_dir, 'config_was_run'), 'w') as f:
     f.write('1')
