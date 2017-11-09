@@ -2,6 +2,8 @@
 set -e -u
 set -x
 
+cd $(dirname $0)
+
 _bazel() {
     bazel --bazelrc=/dev/null "$@"
 }

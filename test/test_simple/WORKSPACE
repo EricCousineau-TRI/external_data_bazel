@@ -4,5 +4,5 @@ load("//tools:path.bzl", "dirname")
 
 local_repository(
     name = "external_data_bazel_pkg",
-    path = dirname(__workspace_dir__),
+    path = dirname(dirname(__workspace_dir__)),
 )

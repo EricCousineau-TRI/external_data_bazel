@@ -7,7 +7,7 @@ set(_external_data_bazel_pkg ${PROJECT_BINARY_DIR}/external/external_data_bazel_
 
 ExternalProject_Add(external_data_bazel_pkg
     DOWNLOAD_COMMAND
-        ${PROJECT_SOURCE_DIR}/faux_download.sh ${PROJECT_SOURCE_DIR}/.. ${_external_data_bazel_pkg}
+        ${PROJECT_SOURCE_DIR}/faux_download.sh ${PROJECT_SOURCE_DIR}/../.. ${_external_data_bazel_pkg}
     SOURCE_DIR
         ${_external_data_bazel_pkg}
     BUILD_COMMAND
