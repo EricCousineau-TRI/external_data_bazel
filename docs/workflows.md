@@ -1,13 +1,4 @@
-# Motivating Workflows
-
-
-## Configuration
-
-* Inspect the configuration examples in `./config`. The files you will have:
-    * `~/.config/external_data_bazel/config.yml` - User configuration (global cache, backend-specific authentication - NOT to be versioned!).
-        * Default values will be used if this file does not exist or define them.
-    * `${project_root}/.external_data.project.yml` - Project configuration.
-    * `${package_root}/.external_data.yml` - Package configuration. You will need one adjacent to the project root.
+# Workflows
 
 ## Start Drafting a Large File
 
@@ -69,10 +60,13 @@ test.
 
 Let's say you've removed `dragon.obj` from `:/data`, but a month later you wish to revise it. To update the file:
 
-1. Download the corresponding hash file:
+1. Delete and then download the corresponding hash file:
 
         cd data
+        rm -f dragon.obj
         ../tools/external_data download ./dragon.obj.sha512
+
+    **NOTE**: You may also run `../tools/external_data download ./dragon.obj`. It will recognize the intended object.
 
 2. Change `:/data/BUILD.bazel` back to development mode:
 
