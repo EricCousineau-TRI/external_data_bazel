@@ -1,0 +1,25 @@
+# Adapted from girder/girder.
+FROM node:6
+
+EXPOSE 8080
+
+RUN apt-get update && apt-get install -qy software-properties-common python-software-properties && \
+  apt-get update && apt-get install -qy \
+    build-essential \
+    git \
+    libffi-dev \
+    libsasl2-dev \
+    libldap2-dev \
+    libpython-dev && \
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
+
+WORKDIR /
+RUN git clone https://github.com/girder/girder -b v2.4.0 girder
+
+WORKDIR /girder
+RUN pip install -e .[plugins]
+RUN girder-install web --all-plugins
+
+ENTRYPOINT ["python", "-m", "girder"]

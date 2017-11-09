@@ -32,7 +32,14 @@ echo "[ Edge Case Workflow ]"
     # _bazel test :test_workflows
 )
 
-# TODO: Run backend tests (e.g. GirderHashsum).
+echo "[ Backends ]"
+(
+    cd test_backends
+    (
+        cd girder
+        ./run_tests.sh
+    )
+)
 
 # TODO: Not yet complete.
 # echo "[ CMake/ExternalData Workflow ]"

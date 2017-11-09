@@ -1,0 +1,15 @@
+FROM ubuntu:16.04
+
+WORKDIR /root
+
+COPY ./client_prereqs.sh .
+
+RUN yes "Y" | ./client_prereqs.sh \
+      && rm -rf /var/lib/apt/lists/* \
+      && apt-get clean all
+
+RUN wget https://bootstrap.pypa.io/get-pip.py && \
+    python get-pip.py && \
+    pip install girder-client
+
+ENTRYPOINT ["bash"]
