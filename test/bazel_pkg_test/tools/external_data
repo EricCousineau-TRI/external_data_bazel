@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e -u
-
-# Proxy to use Bazel binary, but access to PWD.
+# Proxy to use Bazel binary, but with access to PWD.
 workspace_dir=$(cd $(dirname $0)/.. && pwd)
 bin_dir=${workspace_dir}/bazel-bin/external/external_data_bazel_pkg
 bin=${bin_dir}/cli

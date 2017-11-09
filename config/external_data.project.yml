@@ -1,6 +1,0 @@
-# Project configuration.
-# This defines project boundaries. Named ".external_data.project.yml" when used
-# in projects.
-
-# For server-side versioning, and possibly advanced sentinel detection.
-name: example

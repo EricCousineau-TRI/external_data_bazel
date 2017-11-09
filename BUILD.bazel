@@ -29,12 +29,12 @@ py_binary(
     visibility = ["//visibility:public"],
 )
 
+# Expose this package's main bits to be consumed via a test.
 filegroup(
-    name = "basic_workflows_data",
+    name = "pkg_data",
     srcs = [
         "src",
         "tools",
-        "//test:bazel_pkg_advanced_test",
         "WORKSPACE",
         "BUILD.bazel"
     ],
