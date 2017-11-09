@@ -1,6 +1,10 @@
 import os
 from external_data_bazel import util
 
+# TODO(eric.cousineau): `HashType` and `Hash` interfaces are too tightly bound to
+# `HashFileFrontend`. Delegate these mechanisms back.
+# Specifically, just have `HashType` return its name, and let the `HashFileFrontend`
+# figure out how to get the hash / original file.
 
 class HashType(object):
     def __init__(self, name):
