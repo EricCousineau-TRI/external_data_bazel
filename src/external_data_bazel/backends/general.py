@@ -27,14 +27,13 @@ def _has_file(url, hash, trusted=False):
     else:
         # Just check header.
         first_line = util.subshell('curl -s --head {url} | head -n 1'.format(url=url))
-        bad = ["HTTP/1.1 404 Not Found"]
-        good = ["HTTP/1.1 200 OK", "HTTP/1.1 303 See Other"]
-        if first_line in bad:
+        code = int(re.match(r"^HTTP/1\.1 (\d+) .*$", first_line).group(1))
+        if code >= 400:
             return False
-        elif first_line in good:
+        elif code >= 200:
             return True
         else:
-            raise RuntimeError("Unknown code: {}".format(first_line))
+            raise RuntimeError("Unknown response: {}".format(first_line))
 
 
 def _download_file(url, output_file):

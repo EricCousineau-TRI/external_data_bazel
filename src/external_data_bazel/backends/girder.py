@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 
 from external_data_bazel import util, hashes
@@ -58,9 +59,10 @@ class GirderHashsumBackend(Backend):
         # What about authentication? Optional authentication / public access?
         args = self._download_args(hash)
         first_line = util.subshell('curl -s --head {args} | head -n 1'.format(args=args))
-        if first_line == "HTTP/1.1 404 Not Found":
+        code = int(re.match(r"^HTTP/1\.1 (\d+) .*$", first_line).group(1))
+        if code >= 400:
             return False
-        elif first_line == "HTTP/1.1 303 See Other":
+        elif code >= 200:
             return True
         else:
             raise RuntimeError("Unknown response: {}".format(first_line))
