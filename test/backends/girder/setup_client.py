@@ -8,6 +8,8 @@ import time
 from urllib import urlencode
 import yaml
 
+# To be run by `setup_client.sh`.
+
 def subshell(cmd, strip=True):
     output = subprocess.check_output(cmd, shell=isinstance(cmd, str))
     if strip:
