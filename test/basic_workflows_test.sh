@@ -234,7 +234,7 @@ find . -name '*.sha512' | xargs ../tools/external_data download -f
 
 # Now run the external data tests in Bazel, and ensure that everything passes, since
 # all files defined in Bazel are covered by the remote structures.
-bazel test --test_tag_filters=external_data_test ...
+bazel test --test_tag_filters=external_data_check_test ...
 bazel build :data
 
 # Now add the file from our original setup.
@@ -252,9 +252,9 @@ diff glob_4.bin ../data_new/expected.txt > /dev/null
 # - With caching, it should be able to build.
 bazel build :data
 # - Now ensure that the this test is (a) defined and (b) will fail.
-bazel build :glob_4.bin__download_test
-bazel test :glob_4.bin__download_test && should_fail
+bazel build :glob_4.bin__check_test
+bazel test :glob_4.bin__check_test && should_fail
 # - Ensure that testing across all download tests also fail.
-bazel test --test_tag_filters=external_data_test ... && should_fail
+bazel test --test_tag_filters=external_data_check_test ... && should_fail
 
 echo "[ Done ]"

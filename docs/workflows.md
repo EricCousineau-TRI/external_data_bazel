@@ -216,7 +216,7 @@ This is used in Bazel via `macros.bzl`:
     ./tools/external_data download ${file}.sha512 --output ${file}
 
 
-## Download Files and Expose as Symlinks (Do Not Copy)
+## Download Files and Expose as Symlinks (No Copy)
 
 If you just need easy read-only access to files (and don't want to deal with Bazel's paths), you can use `--symlink`:
 
@@ -232,9 +232,9 @@ If you wish to ensure that other users can reproduce your results, consider `che
 
 This will ensure that the correct file is stored on the remote, regardless of what is stored in the cache.
 
-Additionally, if you use the `add_external_data_tests` macro, you may run this test in Bazel:
+You may run these tests in Bazel:
 
-    bazel test --test_tag_filters=external_data_test ...
+    bazel test --test_tag_filters=external_data_check_test ...
 
 This will check all external data tests in the current package and its subpackages.
 

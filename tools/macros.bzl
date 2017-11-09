@@ -14,22 +14,20 @@ SETTINGS_DEFAULT = dict(
     # be changed.
     # @note This is NOT for arguments after `cli ... download`.
     cli_extra_args = [],
-    # Adds a test suite when tests are finished.
-    # Experimental, will most likely be removed.
-    enable_test_suite = False,
+    # For each `external_data` target, will add an integrity check for the file.
+    enable_check_test = True,
 )
 
-
-PACKAGE_CONFIG_FILE = ".external_data.yml"
 
 _HASH_SUFFIX = ".sha512"
 _RULE_SUFFIX = "__download"
 _RULE_TAG = "external_data"
-_TEST_SUFFIX = "__download_test"
+_TEST_SUFFIX = "__check_test"
 # @note This does NOT include 'external_data', so that running with
 # --test_tag_filters=external_data does not require a remote.
-_TEST_TAGS = ["external_data_test"]
+_TEST_TAGS = ["external_data_check_test"]
 _TOOL = "@external_data_bazel_pkg//:cli"
+_PACKAGE_CONFIG_FILE = ".external_data.yml"
 
 
 def _get_cli_base_args(filepath, settings):
@@ -134,6 +132,10 @@ def external_data(file, mode='normal', visibility=None,
             local = 1,
             visibility = visibility,
         )
+
+        if settings['enable_check_test']:
+            # Add test.
+            _external_data_check_test(file, settings)
     else:
         fail("Invalid mode: {}".format(mode))
 
@@ -174,14 +176,8 @@ def external_data_group(name, files, files_devel = [], mode='normal', visibility
         srcs = all_files,
     )
 
-def _get_external_data_file(rule):
-    name = rule.get("name")
-    if name and name.endswith(_RULE_SUFFIX):
-        if _RULE_TAG in rule["tags"]:
-            return name[:-len(_RULE_SUFFIX)]
-    return None
 
-def _external_data_test(file, settings):
+def _external_data_check_test(file, settings):
     # This test merely checks that this file is indeed available on the remote (ignoring cache).
     name = file + _TEST_SUFFIX
     hash_file = file + _HASH_SUFFIX
@@ -213,31 +209,6 @@ def _external_data_test(file, settings):
         local = 1,
     )
     return name
-
-
-def add_external_data_tests(existing_rules=None, settings=SETTINGS_DEFAULT):
-    """ Add tests to ensure that files are still available to download (and not
-    simply cached.
-    """
-    # Following @drake//tools/lint:cpplint.bzl
-    if existing_rules == None:
-        existing_rules = native.existing_rules()
-
-    # Overlay.
-    settings = SETTINGS_DEFAULT + settings
-
-    tests = []
-    for rule in existing_rules.values():
-        file = _get_external_data_file(rule)
-        if file:
-            tests.append(_external_data_test(file, settings))
-
-    if settings["enable_test_suite"]:
-        native.test_suite(
-            name = "external_data_tests",
-            tests = tests,
-            tags = _TEST_TAGS,
-        )
 
 
 def get_original_files(hash_files):
