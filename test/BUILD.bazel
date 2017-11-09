@@ -7,6 +7,6 @@ sh_test(
     name = "basic_workflows_test",
     srcs = ["basic_workflows_test.sh"],
     data = [
-        "//:workflow_mock",
+        "//:basic_workflows_data",
     ],
 )

@@ -30,7 +30,7 @@ py_binary(
 )
 
 filegroup(
-    name = "workflow_mock",
+    name = "basic_workflows_data",
     srcs = [
         "src",
         "tools",
