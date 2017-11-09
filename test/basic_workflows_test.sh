@@ -21,8 +21,8 @@ mock_dir=${tmp_dir}/bazel_external_data_mock
 
 # TODO: Prevent this from running outside of Bazel.
 
-# Copy what's needed for modifiable `test_mock` directory.
-srcs="src tools test/test_mock BUILD.bazel WORKSPACE"
+# Copy what's needed for modifiable `bazel_pkg_advanced_test` directory.
+srcs="src tools test/bazel_pkg_advanced_test BUILD.bazel WORKSPACE"
 rm -rf ${mock_dir}
 mkdir -p ${mock_dir}
 for src in ${srcs}; do
@@ -35,7 +35,7 @@ cache_dir=${tmp_dir}/test_cache
 upload_dir=${tmp_dir}/upload
 
 # Start modifying.
-cd ${mock_dir}/test/test_mock
+cd ${mock_dir}/test/bazel_pkg_advanced_test
 
 # Create a new package.
 mkcd data_new
@@ -89,7 +89,7 @@ bazel-test :test_basics
 # Now upload the file.
 ../tools/external_data upload ./new.bin
 
-# Since this is using `test_mock`, it should have ran our custom configuration file.
+# Since this is using `bazel_pkg_advanced_test`, it should have ran our custom configuration file.
 [[ -f ${tmp_dir}/config_was_run ]]
 
 # Ensure our upload directory has the file (and only this file).

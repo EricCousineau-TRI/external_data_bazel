@@ -2,7 +2,7 @@ py_test(
     name = "test_basics",
     srcs = ["test_basics.py"],
     data = [
-        "@test_simple//data",
+        "@bazel_pkg_test//data",
     ],
     size = "small",
     visibility = ["//visibility:public"],

@@ -34,7 +34,7 @@ filegroup(
     srcs = [
         "src",
         "tools",
-        "//test:test_mock",
+        "//test:bazel_pkg_advanced_test",
         "WORKSPACE",
         "BUILD.bazel"
     ],

@@ -11,6 +11,8 @@ Please do not use this yet.
 This is a Bazel-centric implementation for incorporating external data into the workspace (not to be versioned in Git, etc.) for testing and running binaries.
 This design is based on Kitware's [CMake/ExternalData](https://blog.kitware.com/cmake-externaldata-using-large-files-with-distributed-version-control/) module, with the implementation based on [this demo repository](https://github.com/jcfr/bazel-large-files-with-girder).
 
+Please see the [Design](docs/DESIGN.md) documentation for more information about the design goals.
+
 # How do I use this?
 
-Please see the [Workflows](WORKFLOWS.md) documentation.
+Please see the [Workflows](docs/WORKFLOWS.md) documentation.
