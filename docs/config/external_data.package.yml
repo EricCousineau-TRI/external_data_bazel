@@ -1,33 +1,22 @@
+# This file should live at: ${package_dir}/.external_data.yml
+
 # This is a package's configuration file. This is used to detect package
 # boundaries (similar to Bazel's `BUILD{,.bazel}` files).
-# Named as ".external_data.yml" when used in projects.
 
 # The remote for all child folders, unless changed.
 # Change this to "devel" if you are uploading files to this remote.
-# If you define a custom `.external_data_bazel.yml` in a subproject, ensure that
-# override the "remote"! Otherwise, the remote will leak through.
+
 remote: master
 
 remotes:
     master:
         # Backend used for storing files.
         backend: girder
-        # Fetch url. Also for pushing, if `pushurl` is not defined.
         url: https://girder.example.com
-        # Define this if you have a different push / upload mechanism.
-        # pushurl: "..."
-        # You may annotate URLs with "[text] " if you wish to differentiate server-specific properties (e.g. "[push] ").
-        # This is stripped when resolving the actual URL.
-
-        # e.g.: 
-        #   url: https://girder.example.com
-        #   pushurl: [push] https://girder.example.com
         folder_id: <master collection>
 
     devel:
         overlay: master
         backend: girder
         url: https://girder.example.com
-        # TODO(eric.cousineau): Change to a devel collection once we can distinguish
-        # hashsum uploads by parent collection.
         folder_id: <devel collection>

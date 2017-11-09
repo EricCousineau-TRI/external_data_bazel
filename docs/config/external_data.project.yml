@@ -1,6 +1,6 @@
-# Project configuration.
-# This defines project boundaries. Named ".external_data.project.yml" when used
-# in projects.
+# This file should live at: ${workspace_dir}/.external_data.project.yml
+# A package *must* be defined at the project root.
 
-# For server-side versioning, and possibly advanced sentinel detection.
+# Project configuration, defines project boundaries.
+# For server-side versioning and specific sentinel detection.
 name: example
