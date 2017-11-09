@@ -70,36 +70,40 @@ def _lock_path(filepath):
     return filepath + ".lock"
 
 def wait_file_read_lock(filepath, timeout=60, interval=0.01, warn_at=2):
-    lock = _lock_path(filepath)
-    warned = False
-    if os.path.isfile(lock):
-        now = time.time()
-        while os.path.isfile(lock):
-            time.sleep(interval)
-            elapsed = time.time() - now
-            if elapsed > timeout:
-                raise RuntimeError("Timeout at {}s when attempting to acquire lock: {}".format(timeout, lock))
-            elif elapsed > warn_at and not warned:
-                eprint("Waiting on lock file for a maximum of {}s:".format(timeout))
-                eprint("  '{}'".format(lock))
-                eprint("  If this persists, please consider removing this file.")
-                warned = True
+    pass
+    # lock = _lock_path(filepath)
+    # warned = False
+    # if os.path.isfile(lock):
+    #     now = time.time()
+    #     while os.path.isfile(lock):
+    #         time.sleep(interval)
+    #         elapsed = time.time() - now
+    #         if elapsed > timeout:
+    #             raise RuntimeError("Timeout at {}s when attempting to acquire lock: {}".format(timeout, lock))
+    #         elif elapsed > warn_at and not warned:
+    #             eprint("Waiting on lock file for a maximum of {}s:".format(timeout))
+    #             eprint("  '{}'".format(lock))
+    #             eprint("  If this persists, please consider removing this file.")
+    #             warned = True
 
 # TODO(eric.cousineau): This does not actually work. Race conditions are encountered easily.
 # How to fix this? os.
 
 class FileWriteLock(object):
     def __init__(self, filepath):
-        self.lock = _lock_path(filepath)
+        pass
+        # self.lock = _lock_path(filepath)
     def __enter__(self):
-        if os.path.isfile(self.lock):
-            raise RuntimeError("Lock already acquired? {}".format(self.lock))
-        # Touch the file.
-        with open(self.lock, 'w') as f:
-            pass
+        pass
+        # if os.path.isfile(self.lock):
+        #     raise RuntimeError("Lock already acquired? {}".format(self.lock))
+        # # Touch the file.
+        # with open(self.lock, 'w') as f:
+        #     pass
     def __exit__(self, *args):
-        assert os.path.isfile(self.lock)
-        os.remove(self.lock)
+        pass
+        # assert os.path.isfile(self.lock)
+        # os.remove(self.lock)
 
 # TODO: Replace this with a more general sentinel with a callback on directory.
 # This can be used to check project name as well.
