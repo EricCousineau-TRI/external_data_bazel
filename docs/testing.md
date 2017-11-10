@@ -22,7 +22,7 @@ General tests, under `test/...`:
 In `test/backends/girder`:
 `./run_tests.sh` will configure and spin up Docker containers for (a) a simple Girder test server (with MongoDB set up) and (b) a client to consume data from this server, using the default user configuration and Girder authentication.
 
-This uses `bazel-large-files-with-girder` as a template.
+This will leverage the current source tree of `external_data_bazel` to run the tests.
 
 If you wish to use this server locally, you may tell the test to run, but to not shutdown (or auto-remove) the container:
 

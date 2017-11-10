@@ -13,10 +13,10 @@ remotes:
         # Backend used for storing files.
         backend: girder
         url: https://girder.example.com
-        folder_id: <master collection>
+        folder_path: /collection/name/folder
 
     devel:
         overlay: master
         backend: girder
         url: https://girder.example.com
-        folder_id: <devel collection>
+        folder_path: /collection/name/folder
