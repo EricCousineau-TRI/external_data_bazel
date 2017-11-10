@@ -1,0 +1,9 @@
+# Mock configuration for caching to a known folder.
+core:
+  # Do not cache into the common user folder.
+  cache_dir: /tmp/external_data_bazel/test_cache
+
+girder:
+  url:
+    "http://localhost:8080":
+      api_key: <insert here>

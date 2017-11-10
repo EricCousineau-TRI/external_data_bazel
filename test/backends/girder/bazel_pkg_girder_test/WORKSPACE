@@ -1,0 +1,8 @@
+workspace(name = "external_data_bazel_pilot")
+
+load("//tools:path.bzl", "dirname")
+
+local_repository(
+    name = "external_data_bazel_pkg",
+    path = dirname(dirname(dirname(dirname(__workspace_dir__)))),
+)

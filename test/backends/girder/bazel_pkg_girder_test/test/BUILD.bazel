@@ -1,0 +1,9 @@
+sh_test(
+    name = "test_basics",
+    srcs = ["test_basics.sh"],
+    data = [
+        "//data",
+    ],
+    size = "small",
+    visibility = ["//visibility:public"],
+)

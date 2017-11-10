@@ -1,0 +1,14 @@
+remote: master
+
+remotes:
+    master:
+        backend: girder_hashsum
+        url: http://localhost:8080
+        folder_path: /collection/master/files
+        # Do NOT upload directly to "master". For now, switch to "devel".
+        disable_upload: true
+
+    devel:
+        backend: girder_hashsum
+        url: http://localhost:8080
+        folder_path: /collection/devel/files

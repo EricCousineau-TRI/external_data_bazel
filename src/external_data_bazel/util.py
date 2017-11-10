@@ -58,6 +58,20 @@ def get_chain(value, key_chain, default=None):
         value = value.get(key)
     return value
 
+def set_chain(base, key_chain, value):
+    if base is None:
+        base = {}
+    cur = base
+    n = len(key_chain)
+    for i, key in enumerate(key_chain):
+        if i + 1 < n:
+            if key not in cur:
+                cur[key] = {}
+                cur = cur[key]
+        else:
+            cur[key] = value
+    return base
+
 
 def curl(args):
     try:
