@@ -18,10 +18,10 @@ However, if you wish to upload, you must have `girder_client` on your system. Yo
 
     pip install girder-client
 
-Consider using `virtualenv`:
+Consider using `virtualenv --system-site-packages` to try out `girder_client`:
 
     env_dir=/path/to/directory
-    virtualenv ${env_dir}
+    virtualenv --system-site-packages ${env_dir}
     source ${env_dir}/bin/activate
     pip install girder-client
 
