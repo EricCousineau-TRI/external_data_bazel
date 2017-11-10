@@ -9,13 +9,8 @@ out_dir=${2}
 mkdir -p ${out_dir}
 cd ${out_dir}
 
-repo_name=bazel-large-files-with-girder
+repo_name=bazel_pkg_girder_test
 repo_dir=${out_dir}/${repo_name}
-rm -rf ${repo_dir}
-(
-    
-    git clone https://github.com/EricCousineau-TRI/bazel-large-files-with-girder.git -b feature/external_data
-)
 
 # Download data files.
 (
@@ -28,5 +23,5 @@ rm -rf ${repo_dir}
 
 info_file=${out_dir}/info.yaml
 config_file=${repo_dir}/.external_data.yml
-user_file=${out_dir}/external_data.user.yml
+user_file=${repo_dir}/tools/external_data.user.yml
 ${cur_dir}/setup_client.py ${url} ${info_file} ${config_file} ${user_file}

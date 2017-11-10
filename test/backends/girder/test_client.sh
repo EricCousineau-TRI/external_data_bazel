@@ -3,10 +3,7 @@ set -e -u -x
 
 cd /mnt/build
 
-mkdir -p ~/.config/external_data_bazel
-cp ./external_data.user.yml ~/.config/external_data_bazel/config.yml
-
-cd ./bazel-large-files-with-girder
+cd ./bazel_pkg_girder_test
 
 cd data
 

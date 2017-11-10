@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import yaml
 from datetime import datetime
 
 from external_data_bazel import util, hashes
