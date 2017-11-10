@@ -53,7 +53,7 @@ echo -e "client:\n${client}"
     # Copy in test respository, remove cruft
     cp -r ./bazel_pkg_girder_test ${out_dir}
     cd ${out_dir}/bazel_pkg_girder_test
-    rm bazel-*
+    rm -rf bazel-*
     sed -i 's#path = .*,$#path = dirname(__workspace_dir__) + "/external_data_bazel",#g' WORKSPACE
 )
 
