@@ -29,8 +29,8 @@ Consider using `virtualenv --system-site-packages` to try out `girder_client`:
 
 ## Configuration
 
-* Inspect the configuration examples in `docs/config`. The files you will have:
-    * `external_data.user.yml` - Goes to `~/.config/external_data_bazel/config.yml`
+* Inspect the configuration examples in `docs/config`:
+    * `external_data.user.yml` - Copy this to `~/.config/external_data_bazel/config.yml`
         * User configuration: global cache, backend-specific authentication (if they don't have their won caching) - NOT to be versioned!
         * Default values will be used if this file does not exist or define them.
     * `external_data.project.yml` - Goes to `${workspace_dir}/.external_data.project.yml`

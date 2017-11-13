@@ -100,7 +100,7 @@ test.
 
         cd data
         touch dragon.obj
-        ../toos/external_data upload ./dragon.obj
+        ../tools/external_data upload ./dragon.obj
 
     If the file does not already exist on the desired server, this will upload the file. This will also update `dragon.obj.sha512` to reflect that the server-side information.
 
