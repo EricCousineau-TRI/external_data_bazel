@@ -1,7 +1,15 @@
-remote: master
+# Project configuration.
+project: bazel_pkg_advanced_test
+
+remote: extra
 
 remotes:
     master:
         backend: mock
-        dir: mock/backend_root
+        dir: mock/master_files
         upload_dir: /tmp/external_data_bazel/upload
+    extra:
+        overlay: master
+        backend: mock
+        dir: mock/extra_files
+        upload_dir: /tmp/external_data_bazel/upload_extra

@@ -6,11 +6,10 @@ from external_data_bazel.core import Backend
 
 class MockBackend(Backend):
     """ A mock backend for testing. """
-    def __init__(self, config, package):
-        Backend.__init__(self, config, package, can_upload=True)
-        self._dir = os.path.join(self.project.root, config['dir'])
-        # TODO(eric.cousineau): Enable ${PWD} for testing?
-        self._upload_dir = os.path.join(self.project.root, config['upload_dir'])
+    def __init__(self, config, project_root, user):
+        Backend.__init__(self, config, project_root, user, can_upload=True)
+        self._dir = os.path.join(project_root, config['dir'])
+        self._upload_dir = os.path.join(project_root, config['upload_dir'])
         self._hash_type = hashes.sha512
 
         # Crawl through files and compute hashes.

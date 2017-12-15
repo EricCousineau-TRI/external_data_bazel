@@ -1,8 +1,8 @@
 from __future__ import absolute_import, print_function
-import sys
-import os
-import yaml
 import argparse
+import os
+import sys
+import yaml
 
 from external_data_bazel import core, util, config_helpers
 
@@ -30,13 +30,13 @@ def run(args, project):
         if len(args.input_files) != 1:
             raise RuntimeError("Can only specify one input file with --output")
         input_file = os.path.abspath(args.input_files[0])
-        info = project.get_file_info(input_file)
+        info = project.frontend.get_file_info(input_file)
         output_file = os.path.abspath(args.output_file)
         do_download(args, project, info, output_file)
     else:
         for input_file in args.input_files:
             input_file = os.path.abspath(input_file)
-            info = project.get_file_info(input_file)
+            info = project.frontend.get_file_info(input_file)
             output_file = info.default_output_file
             def action():
                 do_download(args, project, info, output_file)

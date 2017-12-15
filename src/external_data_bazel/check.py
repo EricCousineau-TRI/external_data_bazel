@@ -1,5 +1,6 @@
 """
-This script allows to upload data file revisoned based on a canonical path.
+@file
+Allows uploading data file to a remote.
 """
 
 import os
@@ -32,7 +33,7 @@ def run(args, project):
 
 def do_check(args, project, filepath_in):
     filepath = os.path.abspath(filepath_in)
-    info = project.get_file_info(filepath)
+    info = project.frontend.get_file_info(filepath)
     remote = info.remote
     project_relpath = info.project_relpath
     hash = info.hash

@@ -4,7 +4,6 @@ py_library(
     name = "core",
     srcs = [
         "__init__.py",
-        "general.py",
         "mock.py",
     ],
     deps = [
@@ -27,8 +26,6 @@ py_library(
 py_library(
     name = "backends",
     deps = [
-        # TODO(eric.cousineau): Conditionally select?
-        # For now, just delegate to a run-time selection.
         ":core",
         ":girder",
     ],

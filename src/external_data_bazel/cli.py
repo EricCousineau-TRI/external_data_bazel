@@ -15,12 +15,6 @@ parser.add_argument('--project_root_guess', type=str, default='.',
                     help='File path to guess the project root.')
 parser.add_argument('--project_name', type=str, default=None,
                     help='Constrain finding a project root to the given name.')
-# TODO(eric.cousineau): If we are crossing project boundaries, consider checking project name as well.
-# This would allow a parent project to use `--project_root_guess`, given a child project's files, but
-# without thinking that it's the child project. This is normally handled by PWD, but is not the case
-# with Bazel.
-parser.add_argument('--user_config', type=str, default=None,
-                    help='Override user configuration (useful for testing).')
 parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-v', '--verbose', action='store_true',
@@ -52,14 +46,10 @@ if args.verbose:
     util.eprint("  argv[0]: {}".format(sys.argv[0]))
     util.eprint("  argv[1:]: {}".format(sys.argv[1:]))
 
-user_config = None
-if args.user_config is not None:
-    user_config = config_helpers.parse_config_file(args.user_config)
-
 project = core.load_project(
     os.path.abspath(args.project_root_guess),
-    user_config_in=user_config,
     project_name=args.project_name)
+
 if args.verbose:
     yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
     yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)

@@ -1,8 +1,0 @@
-remote: test_package_overlay
-
-remotes:
-    test_package_overlay:
-        overlay: ..
-        backend: mock
-        dir: mock/backend_child
-        upload_dir: /tmp/external_data_bazel/upload_child

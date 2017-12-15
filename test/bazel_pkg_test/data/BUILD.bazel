@@ -5,12 +5,12 @@ load("//tools:external_data.bzl",
 package(default_visibility = ["//visibility:public"])
 
 external_data(
-    file = "direct.bin",
+    file = "basic.bin",
 )
 
 filegroup(
     name = "data",
     srcs = [
-        ":direct.bin",
+        ":basic.bin",
     ],
 )

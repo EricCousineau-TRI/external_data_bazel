@@ -41,9 +41,4 @@ echo "[ Backends ]"
     )
 )
 
-# TODO: Not yet complete.
-# echo "[ CMake/ExternalData Workflow ]"
-# (
-#     cd cmake_pkg_test
-#     ./run_test.sh
-# )
+# TODO: Add CMake usage.

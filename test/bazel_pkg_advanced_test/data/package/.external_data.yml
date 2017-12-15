@@ -1,7 +1,0 @@
-remote: test_child
-
-remotes:
-    test_child:
-        backend: mock
-        dir: mock/backend_child
-        upload_dir: /tmp/external_data_bazel/upload_child

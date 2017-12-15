@@ -40,11 +40,11 @@ def run(args, project):
 def do_upload(args, project, filepath_in):
     filepath = os.path.abspath(filepath_in)
 
-    hash_orig_file = project.is_hash_file(filepath)
+    hash_orig_file = project.frontend.is_hash_file(filepath)
     if hash_orig_file:
         raise RuntimeError("Input file is a hash file. Did you mean to upload '{}' instead?".format(hash_orig_file))
 
-    info = project.get_file_info(filepath, must_have_hash=False)
+    info = project.frontend.get_file_info(filepath, must_have_hash=False)
     remote = info.remote
     project_relpath = info.project_relpath
 
@@ -55,4 +55,4 @@ def do_upload(args, project, filepath_in):
     else:
         # ... Hmm... This looks ugly.
         hash = info.hash.compute(filepath)
-    project.update_file_info(info, hash)
+    project.frontend.update_file_info(info, hash)

@@ -16,32 +16,14 @@ external_data_group(
 )
 
 external_data(
-    file = "package/extra.bin",
-)
-
-# @note package/basic.bin is invalid, since it's in `master`, but this package does not overlay.
-# In general, this may pass, as it's not cached.
-# To fix this, set SETTINGS.CHECK_FILE to True in `external_data.bzl`.
-
-external_data_group(
-    name = "package_overlay",
-    files = get_original_files(glob(['package_overlay/*.bin.sha512'])),
-)
-
-# @warning This will not be downloadable via the command-line if the cache has not yet been hit.
-# For --check_file={only,extra}, this would always file.
-# TODO(eric.cousineau): Address this, if needed.
-external_data(
-    file = "direct.bin",
+    file = "subdir/extra.bin",
 )
 
 filegroup(
     name = "data",
     srcs = [
         ":basic.bin",
-        ":direct.bin",
         ":glob",
-        ":package/extra.bin",
-        ":package_overlay",
+        ":subdir/extra.bin",
     ],
 )

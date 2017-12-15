@@ -1,10 +1,6 @@
 import os
 from external_data_bazel import util
 
-# TODO(eric.cousineau): `HashType` and `Hash` interfaces are too tightly bound to
-# `HashFileFrontend`. Delegate these mechanisms back.
-# Specifically, just have `HashType` return its name, and let the `HashFileFrontend`
-# figure out how to get the hash / original file.
 
 class HashType(object):
     def __init__(self, name):
@@ -26,36 +22,6 @@ class HashType(object):
 
     def create_empty(self):
         return Hash(self, None)
-
-    def get_hash_file(self, orig_file):
-        """ Get hash file from an original file. """
-        raise NotImplemented
-
-    def get_orig_file(self, hash_file):
-        """ Get original file from a hash file.
-        @return Original path, or None if this file is not related to this hash. """
-        raise NotImplemented
-
-    def read_file(self, hash_file):
-        """ Return a Hash from a file. """
-        orig_file = self.get_orig_file(hash_file)
-        assert orig_file is not None
-        value = self.do_read_file(hash_file)
-        return self.create(value, filepath="hash_file[{}]".format(hash_file))
-
-    def write_file(self, hash_file, hash):
-        value = hash.get_value()
-        with open(hash_file, 'w') as f:
-            f.write(value + "\n")
-
-    def do_read_file(self, hash_file):
-        """ Read contents from a file. """
-        with open(hash_file) as f:
-            value = f.read().strip()
-        return value
-
-    def get_value(self, value):
-        return value
 
     def __str__(self):
         return "hash[{}]".format(self.name)
@@ -86,17 +52,10 @@ class Hash(object):
         return self._value is not None
 
     def get_value(self):
-        return self.hash_type.get_value(self._value)
+        return self._value
 
     def get_algo(self):
         return self.hash_type.name
-
-    def write_hash_file(self):
-        assert self.has_value()
-        # This *has* to have been computed from a file.
-        assert self.filepath is not None
-        hash_file = self.hash_type.get_hash_file(self.filepath)
-        self.hash_type.write_file(hash_file, self)
 
     def __str__(self):
         return "{}:{}".format(self.hash_type.name, self._value)
@@ -121,8 +80,6 @@ class Hash(object):
 
 
 class Sha512(HashType):
-    _SUFFIX = '.sha512'
-
     def __init__(self):
         HashType.__init__(self, 'sha512')
 
@@ -130,18 +87,8 @@ class Sha512(HashType):
         value = util.subshell(['sha512sum', filepath]).split(' ')[0]
         return value
 
-    def get_hash_file(self, orig_file):
-        return orig_file + self._SUFFIX
-
-    def get_orig_file(self, hash_file):
-        if not hash_file.endswith(self._SUFFIX):
-            return None
-        else:
-            return hash_file[:-len(self._SUFFIX)]
 
 sha512 = Sha512()
-
-hash_types = [sha512]
 
 if __name__ == "__main__":
     tmp_file = '/tmp/test_hash_file'

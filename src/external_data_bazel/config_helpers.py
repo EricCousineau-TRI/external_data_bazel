@@ -1,15 +1,19 @@
+"""
+@file
+Helpers for configuration finding, specific to (a) general
+`external_data_bazel` configuration and (b) Bazel sandbox path reversal
+within `external_data_bazel`.
+"""
+
 import os
 import yaml
 import copy
 
 from external_data_bazel import util
 
-# Helpers for configuration finding, specific to (a) general `external_data_bazel` configuration
-# and (b) Bazel path obfuscation reversal within `external_data_bazel`.
 
 def guess_start_dir(filepath):
-    """ Guess the starting directory for a filepath.
-    If it's a file, return the dirname of the file. Otherwise, just pass the directory through. """
+    """Returns the directory of a file, or the directory if passed directly."""
     if os.path.isdir(filepath):
         return filepath
     else:
@@ -17,8 +21,8 @@ def guess_start_dir(filepath):
 
 
 def find_project_root(guess_filepath, sentinel, project_name):
-    """ Finds the project root, accounting for oddities when in Bazel execroot-land.
-    This will attempt to find the file sentinel.
+    """Finds the project root, accounting for oddities when in Bazel
+    execroot-land. This will attempt to find the file sentinel.
     """
     start_dir = guess_start_dir(guess_filepath)
     def sentinel_check(filepath):
@@ -37,9 +41,10 @@ def find_project_root(guess_filepath, sentinel, project_name):
         hint = ""
         if project_name:
             hint = " (with project name = '{}')".format(project_name)
-        raise RuntimeError("Could not find sentinel: {}{}".format(sentinel, hint))
-    # If our root_file is a symlink, then this should be due to a Bazel execroot.
-    # Record the original directory as a possible alternative.
+        raise RuntimeError(
+            "Could not find sentinel: {}{}".format(sentinel, hint))
+    # If our root_file is a symlink, then this should be due to a Bazel
+    # execroot. Record the original directory as a possible alternative.
     root_alternatives = []
     if os.path.islink(root_file):
         # Assume that the root file is symlink'd because Bazel has linked it in.
@@ -47,37 +52,13 @@ def find_project_root(guess_filepath, sentinel, project_name):
         alt_root_file = os.readlink(root_file)
         assert os.path.isabs(alt_root_file)
         if os.path.islink(alt_root_file):
-            raise RuntimeError("Sentinel '{}' should only have one level of an absolute-path symlink.".format(sentinel))
-        # Ideally, we should be using `root_file` still as the original.
-        # However, when testing, Bazel still expects us to declare each file.
-        # Since we encounter bugs when attempting to declare all package files, then
-        # we will resort to pulling directly from the file system (unfortunately).
-        # TODO(eric.cousineau): When using each package file is no longer a bug,
-        # remove this swap.
+            raise RuntimeError(
+                "Sentinel '{}' should only have one level of an absolute-path" +
+                "symlink.".format(sentinel))
         (alt_root_file, root_file) = (root_file, alt_root_file)
         root_alternatives.append(os.path.dirname(alt_root_file))
     root = os.path.dirname(root_file)
     return (root, root_alternatives)
-
-
-def find_package_config_files(project_root, start_dir, config_file):
-    """ Find all package config files for a given directory in a project.
-    This excludes the project-root config. """
-    assert os.path.isabs(start_dir)
-    assert os.path.isabs(project_root)
-    assert util.is_child_path(start_dir, project_root)
-    config_files = []
-    cur_dir = start_dir
-    while cur_dir != project_root:
-        test_path = os.path.join(cur_dir, config_file)
-        if os.path.isfile(test_path):
-            config_files.insert(0, test_path)
-        cur_dir = os.path.dirname(cur_dir)
-    # Add project root package.
-    test_path = os.path.join(cur_dir, config_file)
-    assert os.path.isfile(test_path)
-    config_files.insert(0, test_path)
-    return config_files
 
 
 def parse_config_file(config_file, add_filepath = True):
@@ -104,7 +85,8 @@ def merge_config(base_config, new_config, in_place = False):
     for key, new_value in new_config.iteritems():
         base_value = base_config.get(key)
         if isinstance(base_value, dict):
-            assert isinstance(new_value, dict), "New value must be dict: {} - {}".format(key, new_value)
+            assert isinstance(new_value, dict), \
+                   "New value must be dict: {} - {}".format(key, new_value)
             # Recurse.
             value = merge_config(base_value, new_value, in_place=True)
         else:

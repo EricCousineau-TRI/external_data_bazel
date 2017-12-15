@@ -1,21 +1,11 @@
+from datetime import datetime
 import json
 import os
 import re
 import yaml
-from datetime import datetime
 
-from external_data_bazel import util, hashes
+from external_data_bazel import util
 from external_data_bazel.core import Backend
-
-# TODO(eric.cousineau): Split this into a common base backend.
-# @ref https://github.com/girder/girder/issues/2446
-# For the above link, if it turns into a separate plugin on Girder server-side,
-# still keep the original backend for hashsum.
-# Ensure this plugin still uses the same configuration.
-
-# TODO(eric.cousineau): Consider permitting padding a URL with a prefix, e.g. "[devel] " or "[master] ",
-# to allow specific configuruation to be specified.
-# Possibly permit still leveraging the original URL authentication?
 
 
 def action(api_url, endpoint_in, query = None, token = None, args = [], method = "GET"):
@@ -56,7 +46,7 @@ def format_qs(url, query):
 
 class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
-    def __init__(self, config, package):
+    def __init__(self, config, user):
         # Until there is a Girder plugin that can discriminate based on folder_id,
         # have configuration disable uploading on "master".
         # @ref https://github.com/girder/girder/issues/2446
@@ -66,12 +56,12 @@ class GirderHashsumBackend(Backend):
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_path = config['folder_path']
         # Get (optional) authentication information.
-        url_config_node = util.get_chain(self.project.user.config, ['girder', 'url', self._url])
+        url_config_node = util.get_chain(user.config, ['girder', 'url', self._url])
         self._api_key = util.get_chain(url_config_node, ['api_key'])
         self._token = None
         self._girder_client = None
         # Cache configuration.
-        self._config_cache_file = os.path.join(self.project.user.cache_dir, 'config', 'girder.yml')
+        self._config_cache_file = os.path.join(user.cache_dir, 'config', 'girder.yml')
 
     def _action(self, *args, **kwargs):
         return action(self._api_url, *args, token=self._token, **kwargs)

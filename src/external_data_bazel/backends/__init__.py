@@ -1,19 +1,9 @@
-from external_data_bazel.backends.general import UrlBackend, UrlTemplatesBackend
 from external_data_bazel.backends.mock import MockBackend
 
-# Do not import specific backends automagically.
-
-# TODO(eric.cousineau): Consider implementing Git LFS protocol as a backend for pure
-# Hash files (for migration, if needed).
-
-# TODO(eric.cousineau): Given that Backend supports a `project_relpath`, consider adding
-# git-lfs or git-annex clients as potential backends.
 
 def _get_core_backends():
     return {
         "mock": MockBackend,
-        "url": UrlBackend,
-        "url_templates": UrlTemplatesBackend,
     }
 
 
