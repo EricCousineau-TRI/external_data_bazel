@@ -122,28 +122,31 @@ class GirderHashsumBackend(Backend):
             args = url
         return args
 
+    def _is_part_of_folder(self, hash):
+        # Get files for the given hashsum.
+        files = self._action("/file/hashsum/{algo}/{hash}".format(algo=hash.get_algo(), hash=hash.get_value()))
+        for file in files:
+            id = file["_id"]
+            # Get path.
+            path = self._action("/resource/{id}/path".format(id=id), query = {"type": "file"})
+            if path.startswith(self._folder_path + "/"):
+                return True
+        return False
+
     def has_file(self, hash, project_relpath):
         """ Returns true if the given hash exists on the given server. """
         # TODO(eric.cousineau): Is there a quicker way to do this???
         # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
         # This is necessary if we have users with the same file?
         # What about authentication? Optional authentication / public access?
-        args = self._download_args(hash)
-        first_line = util.subshell('curl -s --head {args} | head -n 1'.format(args=args))
-        code = int(re.match(r"^HTTP/1\.1 (\d+) .*$", first_line).group(1))
-        if code >= 400:
-            return False
-        elif code >= 200:
-            return True
-        else:
-            raise RuntimeError("Unknown response: {}".format(first_line))
+        return self._is_part_of_folder(hash)
 
     def download_file(self, hash, project_relpath, output_file):
-        args = self._download_args(hash)
+        if not self.has_file(hash, project_relpath):
+            raise util.DownloadError("File not available in Girder folder '{}': {} (hash: {})".format(self._folder_path, project_relpath, hash))
         # Unfortunately, not having authentication does not yield user-friendly errors.
         # Should fix this later.
-        if not self.has_file(hash, project_relpath):
-            raise util.DownloadError("File not available on Girder server: {} (hash: {})".format(project_relpath, hash))
+        args = self._download_args(hash)
         util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
 
     def _get_girder_client(self):

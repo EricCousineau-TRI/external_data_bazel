@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -qy software-properties-common python-soft
 RUN wget https://bootstrap.pypa.io/get-pip.py && python get-pip.py
 
 WORKDIR /
-RUN git clone https://github.com/girder/girder -b v2.4.0 girder
+RUN git clone https://github.com/girder/girder -b 2.x-maintenance girder
 
 WORKDIR /girder
 RUN pip install -e .[plugins]
