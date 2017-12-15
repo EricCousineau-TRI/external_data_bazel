@@ -15,6 +15,8 @@ parser.add_argument('--project_root_guess', type=str, default='.',
                     help='File path to guess the project root.')
 parser.add_argument('--project_name', type=str, default=None,
                     help='Constrain finding a project root to the given name.')
+parser.add_argument('--user_config', type=str, default=None,
+                    help='Override user configuration.')
 parser.add_argument('-k', '--keep_going', action='store_true',
                     help='Attempt to keep going.')
 parser.add_argument('-v', '--verbose', action='store_true',
@@ -48,6 +50,7 @@ if args.verbose:
 
 project = core.load_project(
     os.path.abspath(args.project_root_guess),
+    user_config_file=args.user_config,
     project_name=args.project_name)
 
 if args.verbose:

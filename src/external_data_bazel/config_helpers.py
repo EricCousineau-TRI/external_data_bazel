@@ -33,14 +33,14 @@ def find_project_root(guess_filepath, sentinel, project_name):
                 # Open and read the file to see if we have the desired name.
                 with open(filepath) as f:
                     config = yaml.load(f)
-                return config['name'] == project_name
+                return config['project'] == project_name
         else:
             return False
     root_file = util.find_file_sentinel(start_dir, sentinel, sentinel_check)
     if root_file is None:
         hint = ""
         if project_name:
-            hint = " (with project name = '{}')".format(project_name)
+            hint = " (with project = '{}')".format(project_name)
         raise RuntimeError(
             "Could not find sentinel: {}{}".format(sentinel, hint))
     # If our root_file is a symlink, then this should be due to a Bazel

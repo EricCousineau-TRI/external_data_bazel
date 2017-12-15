@@ -304,7 +304,7 @@ class HashFileFrontend(object):
         else:
             # Load the hash.
             with open(hash_file, 'r') as f:
-                hash = hash_type.create(f.read(), filepath=orig_filepath)
+                hash = hash_type.create(f.read().strip(), filepath=orig_filepath)
         project_relpath = self.project.get_relpath(orig_filepath)
         remote = self.project.get_selected_remote()
         return FileInfo(hash, remote, project_relpath, default_output_file, orig_filepath)
@@ -349,18 +349,22 @@ def _load_project_config(guess_filepath, project_name=None):
     return project_config
 
 
-def load_project(guess_filepath, project_name = None):
-    """ Loads a project given the injected `bazel_external_data_config` module.
+def load_project(guess_filepath, project_name = None, user_config_file = None):
+    """ Load a project given the injected `bazel_external_data_config` module.
     @param guess_filepath
         Filepath where to start guessing where the project root is.
+    @param user_config_file
+        Overload for user configuration.
     @param project_name
         Constrain finding the project root to project files with the provided project name.
         (For working with nested projects.)
     @return A `Project` instance.
     @see test/bazel_external_data_config
     """
-    if os.path.exists(USER_CONFIG_FILE_DEFAULT):
-        user_config = config_helpers.parse_config_file(USER_CONFIG_FILE_DEFAULT)
+    if user_config_file is None:
+        user_config_file = USER_CONFIG_FILE_DEFAULT
+    if os.path.exists(user_config_file):
+        user_config = config_helpers.parse_config_file(user_config_file)
     else:
         user_config = {}
     user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)

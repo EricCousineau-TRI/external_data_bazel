@@ -57,6 +57,9 @@ class Hash(object):
     def get_algo(self):
         return self.hash_type.name
 
+    def __repr__(self):
+        return str(self)
+
     def __str__(self):
         return "{}:{}".format(self.hash_type.name, self._value)
 
@@ -94,25 +97,39 @@ if __name__ == "__main__":
     tmp_file = '/tmp/test_hash_file'
     with open(tmp_file, 'w') as f:
         f.write('Example contents\n')
-    hash = sha512.compute(tmp_file)
+    cur = sha512.compute(tmp_file)
 
     value_expected = '7f3f25018046549d08c6c9c97808e344aee60071164789a2077a5e34f4a219e45b4f30bc671dc71d2f05d05cec9235a523ebba436254a2b0b3b794f0afd9a7c3'
     hash_expected = sha512.create(value_expected)
     str_expected = 'sha512:{}'.format(value_expected)
 
-    assert hash_expected.check(hash)
-    assert hash_expected == hash
+    assert hash_expected.check(cur)
+    assert hash_expected == cur
 
-    str_actual = str(hash)
+    str_actual = str(cur)
     print(str_actual)
-    print(hash)
-    print(hash.__dict__)
+    print(cur)
+    print(cur.__dict__)
     assert str_actual == str_expected
 
     try:
-        hash_bad = sha512.create('blech')
-        hash.check(hash_bad)
+        cur_bad = sha512.create('blech')
+        cur.check(cur_bad)
         assert False
     except RuntimeError as e:
         print(e)
-    assert hash != hash_bad
+    assert cur != cur_bad
+
+    value_1 = sha512.create('7f3f25018046549d08c6c9c97808e344aee60071164789a2077a5e34f4a219e45b4f30bc671dc71d2f05d05cec9235a523ebba436254a2b0b3b794f0afd9a7c3')
+    value_2 = sha512.create('6f3f25018046549d08c6c9c97808e344aee60071164789a2077a5e34f4a219e45b4f30bc671dc71d2f05d05cec9235a523ebba436254a2b0b3b794f0afd9a7c3')
+    value_2_copy = sha512.create('6f3f25018046549d08c6c9c97808e344aee60071164789a2077a5e34f4a219e45b4f30bc671dc71d2f05d05cec9235a523ebba436254a2b0b3b794f0afd9a7c3')
+    value_3 = sha512.create('5f3f25018046549d08c6c9c97808e344aee60071164789a2077a5e34f4a219e45b4f30bc671dc71d2f05d05cec9235a523ebba436254a2b0b3b794f0afd9a7c3')
+    d = {value_1: 1, value_2: 2}
+    assert value_1 in d
+    assert value_2 in d
+    assert value_2_copy in d
+    assert value_3 not in d
+    assert d[value_1] == 1
+    assert d[value_2] == 2
+
+    print("[ Done ]")
