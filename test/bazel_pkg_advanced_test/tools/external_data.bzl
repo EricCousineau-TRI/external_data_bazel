@@ -9,7 +9,6 @@ SETTINGS = dict(
     cli_sentinel = "//:external_data_sentinel",
     cli_data = [
         "//tools:external_data.user.yml",
-        "//tools:external_data_config.py",
     ],
     cli_extra_args = [
         "--project_name=bazel_pkg_advanced_test",

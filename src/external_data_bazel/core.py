@@ -45,15 +45,16 @@ class Backend(object):
 
 class Remote(object):
     """ Provides a cache-friendly and hierarchy-friendly access to a given remote. """
-    def __init__(self, config, name, load_backend, get_remote):
+    def __init__(self, config, name, project):
         self.config = config
         self.name = name
+        self.project = project
         backend_type = self.config['backend']
-        self._backend = load_backend(backend_type, config)
+        self._backend = self.project.load_backend(backend_type, config)
         overlay_name = self.config.get('overlay')
         self.overlay = None
         if overlay_name is not None:
-            self.overlay = get_remote(overlay_name)
+            self.overlay = self.project.get_remote(overlay_name)
 
     def has_overlay(self):
         """ Returns whether this remote is overlaying another. """
@@ -94,9 +95,9 @@ class Remote(object):
         assert os.path.isabs(output_file)
         # Check if we need to download.
         if use_cache:
-            if not self.has_file(hash):
+            if not self.has_file(hash, project_relpath):
                 raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, hash, output_file))
-            cache_path = self.package.get_hash_cache_path(hash, create_dir=True)
+            cache_path = self.project.get_hash_cache_path(hash, create_dir=True)
 
             # Helper functions.
             def get_cached(skip_sha_check):
@@ -163,6 +164,17 @@ class User(object):
         self.cache_dir = os.path.expanduser(config['core']['cache_dir'])
 
 
+def get_hash_cache_path(cache_dir, hash, create_dir=True):
+    """ Get the cache path for a given hash file. """
+    hash_algo = hash.get_algo()
+    hash_value = hash.get_value()
+    out_dir = os.path.join(
+        cache_dir, hash_algo, hash_value[0:2], hash_value[2:4])
+    if create_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    return os.path.join(out_dir, hash_value)
+
+
 class Project(object):
     """Specifies a project's structure, remotes, and determines the mapping
     between files and their remotes (for download / uploading). """
@@ -181,11 +193,11 @@ class Project(object):
         self._remotes = {}
         self._remote_is_loading = []
 
-    def _load_backend(self, backend_type, config):
+    def load_backend(self, backend_type, config):
         backend_cls = self._backends[backend_type]
         return backend_cls(config, self.root, self.user)
 
-    def _get_remote(self, name):
+    def get_remote(self, name):
         remote = self._remotes.get(name)
         if remote:
             return remote
@@ -195,14 +207,14 @@ class Project(object):
         self._remote_is_loading.append(name)
         # Load remote.
         remote_config = self.config['remotes'][name]
-        remote = Remote(remote_config, name, self._load_backend, self._get_remote)
+        remote = Remote(remote_config, name, self)
         # Update.
         self._remote_is_loading.remove(name)
         self._remotes[name] = remote
         return remote
 
     def get_selected_remote(self):
-        return self._get_remote(self._remote_selected)
+        return self.get_remote(self._remote_selected)
 
     def debug_dump_user_config(self):
         """ Returns the user settings configuration. """
@@ -247,16 +259,7 @@ class Project(object):
         return os.path.join(self.root, relpath)
 
     def get_hash_cache_path(self, hash, create_dir=False):
-        """ Get the cache path for a given hash file. """
-        # TODO(eric.cousineau): Consider enabling multiple tiers of caching (for temporary stuff) according to remotes.
-        hash_algo = hash.get_algo()
-        hash_value = hash.get_value()
-        out_dir = os.path.join(
-            self.user.cache_dir, hash_algo, hash_value[0:2], hash_value[2:4])
-        if create_dir and not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
-        return os.path.join(out_dir, hash_value)
-
+        return get_hash_cache_path(self.user.cache_dir, hash, create_dir)
 
 
 class HashFileFrontend(object):
@@ -278,7 +281,7 @@ class HashFileFrontend(object):
         if orig_file is None:
             return (self._hash_type, input_file)
         else:
-            (self._hash_type, orig_file)
+            return (self._hash_type, orig_file)
 
     def is_hash_file(self, input_file):
         assert os.path.isabs(input_file)
@@ -288,7 +291,7 @@ class HashFileFrontend(object):
         assert not self.is_hash_file(input_file)
         return input_file + self._suffix
 
-    def get_file_info(self, input_file, must_have_hash):
+    def get_file_info(self, input_file, must_have_hash=True):
         assert os.path.isabs(input_file)
         hash_type, orig_filepath = self._infer_hash_type(input_file)
         default_output_file = orig_filepath
