@@ -54,8 +54,8 @@ project = core.load_project(
     project_name=args.project_name)
 
 if args.verbose:
-    yaml.dump({"user_config": project.debug_dump_user_config()}, sys.stdout, default_flow_style=False)
-    yaml.dump({"project_config": project.debug_dump_config()}, sys.stdout, default_flow_style=False)
+    yaml.dump({"user_config": project.user.config}, sys.stdout, default_flow_style=False)
+    yaml.dump({"project_config": project.config}, sys.stdout, default_flow_style=False)
 
 # Execute command.
 if args.command == 'download':

@@ -56,6 +56,23 @@ class Remote(object):
         if overlay_name is not None:
             self.overlay = self.project.get_remote(overlay_name)
 
+    def debug_config(self):
+        """For each remote, print its configuration, relative project path, and its overlays. """
+        core = {}
+        node = core
+        remote = self
+        while remote:
+            config = {remote.name: remote.config}
+            node.update(config=config)
+            remote = remote.overlay
+            if remote:
+                parent = node
+                node = {}
+                parent['overlay'] = node
+            else:
+                break
+        return core
+
     def has_overlay(self):
         """ Returns whether this remote is overlaying another. """
         return self.overlay is not None
@@ -221,30 +238,6 @@ class Project(object):
 
     def get_selected_remote(self):
         return self.get_remote(self._remote_selected)
-
-    def debug_dump_user_config(self):
-        """ Returns the user settings configuration. """
-        return self.user.config
-
-    def debug_dump_config(self):
-        """ Returns the project configuration. """
-        return self.config
-
-    def debug_dump_remote_config(self, remote):
-        """ For each remote, print its configuration, relative project path, and its overlays. """
-        core = {}
-        node = core
-        while remote:
-            config = {remote.name: remote.config}
-            node.update(config=config)
-            remote = remote.overlay
-            if remote:
-                parent = node
-                node = {}
-                parent['overlay'] = node
-            else:
-                break
-        return core
 
     def get_relpath(self, filepath):
         """ Get filepah relative to project root, using alternative roots if viable.

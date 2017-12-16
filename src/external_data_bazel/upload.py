@@ -48,11 +48,20 @@ def do_upload(args, project, filepath_in):
     remote = info.remote
     project_relpath = info.project_relpath
 
+    def dump_remote_config():
+        dump = [{
+            "file": project_relpath,
+            "remote": remote.debug_config(),
+        }]
+        yaml.dump(dump, sys.stdout, default_flow_style=False)
+
+    if args.verbose:
+        dump_remote_config()
+
     # TODO(eric.cousineau): Consider replacing `filepath` with `info.orig_filepath`, to allow
     # the hash file to be 'uploaded' (redirecting to original file).
     if not args.update_only:
         hash = remote.upload_file(info.hash.hash_type, project_relpath, filepath)
     else:
-        # ... Hmm... This looks ugly.
         hash = info.hash.compute(filepath)
     project.frontend.update_file_info(info, hash)
