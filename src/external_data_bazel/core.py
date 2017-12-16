@@ -251,12 +251,6 @@ class Project(object):
                 return os.path.relpath(filepath, root)
         raise RuntimeError("Path is not a child of given project")
 
-    def get_canonical_path(self, relpath):
-        """ Get filepath as an absolute path, ensuring that it is with respect to the canonical project root.
-        @ note This should be reading operations only! """
-        assert not os.path.isabs(relpath)
-        return os.path.join(self.root, relpath)
-
     def get_hash_cache_path(self, hash, create_dir=False):
         return get_hash_cache_path(self.user.cache_dir, hash, create_dir)
 
@@ -286,7 +280,7 @@ class HashFileFrontend(object):
         assert os.path.isabs(input_file)
         return self._get_orig_file(input_file) is not None
 
-    def get_hash_file(self, input_file):
+    def _get_hash_file(self, input_file):
         assert not self.is_hash_file(input_file)
         return input_file + self._suffix
 
@@ -294,7 +288,7 @@ class HashFileFrontend(object):
         assert os.path.isabs(input_file)
         hash_type, orig_filepath = self._infer_hash_type(input_file)
         default_output_file = orig_filepath
-        hash_file = self.get_hash_file(orig_filepath)
+        hash_file = self._get_hash_file(orig_filepath)
         if not os.path.isfile(hash_file):
             if must_have_hash:
                 raise RuntimeError("ERROR: Hash file not found: {}".format(hash_file))
@@ -311,7 +305,7 @@ class HashFileFrontend(object):
     def update_file_info(self, info, hash):
         """Writes hashsum, updating hash filepath if needed. """
         assert hash.hash_type == self._hash_type
-        hash_file = self.get_hash_file(info.orig_filepath)
+        hash_file = self._get_hash_file(info.orig_filepath)
         if hash.filepath is not None:
             assert hash.filepath == info.orig_filepath, "{} != {}".format(hash.filepath, info.orig_filepath)
         else:
