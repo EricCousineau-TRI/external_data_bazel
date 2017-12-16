@@ -93,10 +93,16 @@ class Remote(object):
         @returns 'cache' if there was a cachce hit, 'download' otherwise.
         """
         assert os.path.isabs(output_file)
+
+        def download_file_direct(output_file):
+            try:
+                self._download_file_direct(hash, project_relpath, output_file)
+            except util.DownloadError as e:
+                sys.stderr.write("ERROR: For remote '{}'".format(self.name))
+                raise e
+
         # Check if we need to download.
         if use_cache:
-            if not self.has_file(hash, project_relpath):
-                raise util.DownloadError("Remote '{}' does not have file {} to download to {}".format(self.name, hash, output_file))
             cache_path = self.project.get_hash_cache_path(hash, create_dir=True)
 
             # Helper functions.
@@ -124,7 +130,7 @@ class Remote(object):
 
             def get_download_and_cache():
                 with util.FileWriteLock(cache_path):
-                    self._download_file_direct(hash, project_relpath, cache_path)
+                    download_file_direct(cache_path)
                     # Make cache file read-only.
                     util.subshell(['chmod', '-w', cache_path])
                 # Use cached file - `get_download()` has already checked the hash.
@@ -139,7 +145,7 @@ class Remote(object):
                 get_download_and_cache()
                 return 'download'
         else:
-            self._download_file_direct(hash, project_relpath, output_file)
+            download_file_direct(output_file)
             return 'download'
 
     def upload_file(self, hash_type, project_relpath, filepath):

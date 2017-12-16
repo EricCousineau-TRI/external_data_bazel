@@ -32,7 +32,7 @@ for src in ${srcs}; do
 done
 
 cache_dir=${tmp_dir}/test_cache
-upload_dir=${tmp_dir}/upload
+upload_dir=${tmp_dir}/upload_extra
 
 # Start modifying.
 cd ${mock_dir}/test/bazel_pkg_advanced_test
@@ -88,9 +88,6 @@ bazel-test :test_basics
 
 # Now upload the file.
 ../tools/external_data upload ./new.bin
-
-# Since this is using `bazel_pkg_advanced_test`, it should have ran our custom configuration file.
-[[ -f ${tmp_dir}/config_was_run ]]
 
 # Ensure our upload directory has the file (and only this file).
 [[ -d ${upload_dir} ]]
@@ -218,19 +215,13 @@ cd ../data/
 # Remove any *.bin files that may have been from the original folder.
 find . -name '*.bin' | xargs rm -f
 
-# @note Cache `./basic.bin` so that `./package/basic.bin` is valid,
-# just in case `find` does not process `./basic.bin` before `./package/basic.bin`.
-../tools/external_data download ./basic.bin
-
 # Ensure that we can download all files here (without `check`).
-# Use `-f` to overwrite (since we just downloaded `basic.bin`).
-find . -name '*.sha512' | xargs ../tools/external_data download -f
-# Same for `direct.bin`, when not consumed in Bazel.
-../tools/external_data check ./direct.bin.sha512
+find . -name 'bad.bin.sha512' -prune -o \( -name '*.sha512' -print \) | xargs ../tools/external_data download -f
 
-../tools/external_data check ./package/extra.bin.sha512
-# Ensure that 'package/basic.bin' is invalid with `check`.
-../tools/external_data check ./package/basic.bin.sha512 && should_fail
+../tools/external_data check ./subdir/extra.bin.sha512
+# Ensure that 'bad.bin' is invalid with `check` and `download`.
+../tools/external_data check ./bad.bin.sha512 && should_fail
+../tools/external_data download ./bad.bin.sha512 && should_fail
 
 # Now run the external data tests in Bazel, and ensure that everything passes, since
 # all files defined in Bazel are covered by the remote structures.

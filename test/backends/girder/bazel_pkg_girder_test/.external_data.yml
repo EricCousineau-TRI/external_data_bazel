@@ -1,3 +1,6 @@
+# Project configuration.
+project: bazel_pkg_girder_test
+
 remote: master
 
 remotes:

@@ -46,12 +46,12 @@ def format_qs(url, query):
 
 class GirderHashsumBackend(Backend):
     """ Supports Girder servers where authentication may be needed (e.g. for uploading, possibly downloading). """
-    def __init__(self, config, user):
+    def __init__(self, config, project_root, user):
         # Until there is a Girder plugin that can discriminate based on folder_id,
         # have configuration disable uploading on "master".
         # @ref https://github.com/girder/girder/issues/2446
         disable_upload = config.get('disable_upload', False)
-        Backend.__init__(self, config, package, can_upload=not disable_upload)
+        Backend.__init__(self, config, project_root, user, can_upload=not disable_upload)
         self._url = config['url']
         self._api_url = "{}/api/v1".format(self._url)
         self._folder_path = config['folder_path']
@@ -159,7 +159,6 @@ class GirderHashsumBackend(Backend):
         print("filepath ...........: %s" % filepath)
         print("hash ...............: %s" % hash)
         print("item_name ..........: %s" % item_name)
-        print("project_root .......: %s" % self.project.root)
         print("project_relpath .: %s" % project_relpath)
         # TODO(eric.cousineau): Include `project.name` in the versioning!
         # TODO(eric.cousineau): Add the visualization key for the Girder `vtk.js` stuff.
