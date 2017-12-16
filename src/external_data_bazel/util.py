@@ -1,9 +1,8 @@
-from __future__ import absolute_import, print_function
+from __future__ import print_function
+
 import os
 import subprocess
 import sys
-import json
-import time
 
 
 def is_child_path(child_path, parent_path, require_abs=True):

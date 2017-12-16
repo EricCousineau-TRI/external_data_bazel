@@ -4,13 +4,9 @@ This script allows to upload data file revisoned based on a canonical path.
 
 from __future__ import absolute_import, print_function
 
-import json
 import os
 import sys
-import textwrap
 import argparse
-
-from datetime import datetime
 
 from external_data_bazel import core, util
 
