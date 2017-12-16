@@ -160,10 +160,9 @@ cat ./BUILD.bazel
 # The test should pass.
 bazel-test :test_basics
 
-# Now upload the newest version.
-# - Trying to upload the SHA-512 file should fail.
-../tools/external_data upload ./new.bin.sha512 && should_fail
+# Now upload the newest version (both original file and hash file should work).
 ../tools/external_data upload ./new.bin
+../tools/external_data upload ./new.bin.sha512
 
 # There should be two files uploaded.
 [[ $(find ${upload_dir} -type f | wc -l) -eq 2 ]]

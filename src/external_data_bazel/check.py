@@ -39,11 +39,7 @@ def do_check(args, project, filepath_in):
     hash = info.hash
 
     def dump_remote_config():
-        dump = [{
-            "file": project_relpath,
-            "remote": remote.debug_config(),
-        }]
-        yaml.dump(dump, sys.stdout, default_flow_style=False)
+        yaml.dump(info.debug_config(), sys.stdout, default_flow_style=False)
 
     if args.verbose:
         dump_remote_config()

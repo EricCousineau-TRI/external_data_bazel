@@ -37,7 +37,7 @@ def run(args, project):
         for input_file in args.input_files:
             input_file = os.path.abspath(input_file)
             info = project.frontend.get_file_info(input_file)
-            output_file = info.default_output_file
+            output_file = info.orig_filepath
             def action():
                 do_download(args, project, info, output_file)
             if args.keep_going:
@@ -55,16 +55,10 @@ def run(args, project):
 def do_download(args, project, info, output_file):
     project_relpath = info.project_relpath
     remote = info.remote
-
-    def dump_remote_config():
-        dump = [{
-            "file": project_relpath,
-            "remote": remote.debug_config(),
-        }]
-        yaml.dump(dump, sys.stdout, default_flow_style=False)
+    hash = info.hash
 
     if args.verbose:
-        dump_remote_config()
+        yaml.dump(info.debug_config(), sys.stdout, default_flow_style=False)
 
     # Ensure that we do not overwrite existing files.
     if os.path.isfile(output_file):
@@ -74,6 +68,6 @@ def do_download(args, project, info, output_file):
             raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
 
     download_type = remote.download_file(
-        info.hash, project_relpath, output_file,
+        hash, project_relpath, output_file,
         use_cache=not args.no_cache,
         symlink=args.symlink)
