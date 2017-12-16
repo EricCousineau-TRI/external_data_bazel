@@ -85,7 +85,7 @@ class GirderHashsumBackend(Backend):
         key_chain = ['url', self._url, 'folder_ids', self._folder_path]
         folder_id = util.get_chain(config_cache, key_chain)
         # TODO(eric.cousineau): If folder is invalid, discard it.
-        # Do this in `has_file`?
+        # Do this in `check_file`?
         if folder_id is None:
             self._authenticate_if_needed()
             response = self._action('/resource/lookup', query = {"path": self._folder_path})
@@ -123,16 +123,12 @@ class GirderHashsumBackend(Backend):
                 return True
         return False
 
-    def has_file(self, hash, project_relpath):
-        """ Returns true if the given hash exists on the given server. """
-        # TODO(eric.cousineau): Is there a quicker way to do this???
-        # TODO(eric.cousineau): Check `folder_id` and ensure it lives in the same place?
-        # This is necessary if we have users with the same file?
-        # What about authentication? Optional authentication / public access?
+    def check_file(self, hash, project_relpath):
+        # Ensure the file exists in the folder.
         return self._is_part_of_folder(hash)
 
     def download_file(self, hash, project_relpath, output_file):
-        if not self.has_file(hash, project_relpath):
+        if not self.check_file(hash, project_relpath):
             raise util.DownloadError("File not available in Girder folder '{}': {} (hash: {})".format(self._folder_path, project_relpath, hash))
         # Unfortunately, not having authentication does not yield user-friendly errors.
         # Should fix this later.

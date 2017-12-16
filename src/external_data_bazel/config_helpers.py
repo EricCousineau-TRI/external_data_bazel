@@ -24,7 +24,7 @@ def find_project_root(guess_filepath, sentinel, project_name):
     """Finds the project root, accounting for oddities when in Bazel
     execroot-land. This will attempt to find the file sentinel.
     """
-    start_dir = guess_start_dir(guess_filepath)
+
     def sentinel_check(filepath):
         if os.path.exists(filepath):
             if project_name is None:
@@ -36,6 +36,8 @@ def find_project_root(guess_filepath, sentinel, project_name):
                 return config['project'] == project_name
         else:
             return False
+
+    start_dir = guess_start_dir(guess_filepath)
     root_file = util.find_file_sentinel(start_dir, sentinel, sentinel_check)
     if root_file is None:
         hint = ""
@@ -61,7 +63,7 @@ def find_project_root(guess_filepath, sentinel, project_name):
     return (root, root_alternatives)
 
 
-def parse_config_file(config_file, add_filepath = True):
+def parse_config_file(config_file, add_filepath=True):
     """ Parse a configuration file.
     @param add_filepath
         Adds `config_file` to the root level for debugging purposes. """
@@ -74,7 +76,8 @@ def parse_config_file(config_file, add_filepath = True):
     return config
 
 
-def merge_config(base_config, new_config, in_place = False):
+def merge_config(base_config, new_config, in_place=False):
+    """Recursively merges configurations. """
     if base_config is None:
         return new_config
     if not in_place:

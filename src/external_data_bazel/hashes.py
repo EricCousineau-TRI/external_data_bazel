@@ -7,6 +7,7 @@ class HashType(object):
         self.name = name
 
     def compute(self, filepath):
+        """Computes the hashsum for a given `filepath`. """
         if not os.path.exists(filepath):
             raise RuntimeError("File does not exist: {}".format(filepath))
         assert os.path.isabs(filepath)
@@ -14,13 +15,16 @@ class HashType(object):
         return self.create(value, filepath)
 
     def do_compute(self, filepath):
-        """ Return a type that can be compared via == (e.g. a string, or tuple (for size + sha)). """
+        """Implementation to compute a hashsum that is comparable via __eq__.
+        """
         raise NotImplemented
 
     def create(self, value, filepath=None):
+        """Creates hashsum given `value` and an optional `filepath`. """
         return Hash(self, value, filepath=filepath)
 
     def create_empty(self):
+        """Creates empty hashsum. """
         return Hash(self, None)
 
     def __str__(self):
@@ -28,28 +32,36 @@ class HashType(object):
 
 
 class Hash(object):
-    """ Store hash value, type, and possibly the filepath the hash was generated from. """
+    """Stores hash value, type, and possibly the filepath the hash was
+    generated from. """
     def __init__(self, hash_type, value, filepath=None):
         self.hash_type = hash_type
         self.filepath = filepath
         self._value = value
 
     def compute(self, filepath):
-        # Compute hash for a filepath, using the same type as this hash.
+        """Computes hash for a filepath, using the same type as this hash. """
         return self.hash_type.compute(filepath)
 
-    def check(self, other_hash, do_throw=True):
-        if other_hash.hash_type == self.hash_type and self._value == other_hash._value:
+    def compare(self, other_hash, do_throw=True):
+        """Compares against another hash. """
+        if (other_hash.hash_type == self.hash_type and
+                self._value == other_hash._value):
             return True
         else:
             if do_throw:
-                raise RuntimeError("Hash mismatch: {} != {}".format(self.full_str(), other_hash.full_str()))
+                raise RuntimeError(
+                    "Hash mismatch: {} != {}".format(
+                        self.full_str(), other_hash.full_str()))
+            else:
+                return False
 
-    def check_file(self, filepath, do_throw=True):
-        return self.check(self.compute(filepath), do_throw=do_throw)
+    def compare_file(self, filepath, do_throw=True):
+        """Compares against a file, using the same algorithm. """
+        return self.compare(self.compute(filepath), do_throw=do_throw)
 
-    def has_value(self):
-        return self._value is not None
+    def is_empty(self):
+        return self._value is None
 
     def get_value(self):
         return self._value
@@ -64,11 +76,11 @@ class Hash(object):
         return "{}:{}".format(self.hash_type.name, self._value)
 
     def __eq__(self, rhs):
-        return self.check(rhs, do_throw=False)
+        return self.compare(rhs, do_throw=False)
 
     def __hash__(self):
         # Do not permit empty hashes to be used in a dict.
-        assert self.has_value()
+        assert not self.is_empty()
         params = (self.hash_type, self._value)
         return hash(params)
 
@@ -103,18 +115,15 @@ if __name__ == "__main__":
     hash_expected = sha512.create(value_expected)
     str_expected = 'sha512:{}'.format(value_expected)
 
-    assert hash_expected.check(cur)
+    assert hash_expected.compare(cur)
     assert hash_expected == cur
 
     str_actual = str(cur)
-    print(str_actual)
-    print(cur)
-    print(cur.__dict__)
     assert str_actual == str_expected
 
     try:
         cur_bad = sha512.create('blech')
-        cur.check(cur_bad)
+        cur.compare(cur_bad)
         assert False
     except RuntimeError as e:
         print(e)

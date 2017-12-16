@@ -2,26 +2,24 @@ import os
 
 from external_data_bazel import util, config_helpers, hashes
 
-
 PROJECT_CONFIG_FILE = ".external_data.yml"
 USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
-CACHE_DIR_DEFAULT = "~/.cache/external_data_bazel"
 USER_CONFIG_DEFAULT = {
     "core": {
-        "cache_dir": CACHE_DIR_DEFAULT,
+        "cache_dir": os.path.expanduser("~/.cache/external_data_bazel"),
     },
 }
 
 
 def load_project(guess_filepath, project_name = None, user_config_file = None):
-    """ Load a project given the injected `bazel_external_data_config` module.
+    """Loads a project.
     @param guess_filepath
         Filepath where to start guessing where the project root is.
     @param user_config_file
         Overload for user configuration.
     @param project_name
-        Constrain finding the project root to project files with the provided project name.
-        (For working with nested projects.)
+        Constrain finding the project root to project files with the provided
+        project name (for working with nested projects).
     @return A `Project` instance.
     @see test/bazel_external_data_config
     """
@@ -33,27 +31,23 @@ def load_project(guess_filepath, project_name = None, user_config_file = None):
         user_config = {}
     user_config = config_helpers.merge_config(USER_CONFIG_DEFAULT, user_config)
     user = User(user_config)
-    project_config = _load_project_config(guess_filepath, project_name)
-    # We must place this import here given that `Backend` is defined in this module.
-    from external_data_bazel import backends
-    project = Project(project_config, user, backends.get_default_backends())
-    return project
-
-
-def _load_project_config(guess_filepath, project_name=None):
-    # Load the project user configuration from a filepath to guess to find the project root.
     # Start guessing where the project lives.
-    sentinel = PROJECT_CONFIG_FILE
-    project_root, root_alternatives = config_helpers.find_project_root(guess_filepath, sentinel, project_name)
+    project_root, root_alternatives = config_helpers.find_project_root(
+        guess_filepath, PROJECT_CONFIG_FILE, project_name)
     # Load configuration.
-    project_config_file = os.path.join(project_root, os.path.join(project_root, PROJECT_CONFIG_FILE))
+    project_config_file = os.path.join(
+        project_root, os.path.join(project_root, PROJECT_CONFIG_FILE))
     project_config = config_helpers.parse_config_file(project_config_file)
     # Inject project information.
     project_config['root'] = project_root
-    # Cache symlink root, and use this to get relative workspace path if the file is specified in
-    # the symlink'd directory (e.g. Bazel runfiles).
+    # Cache symlink root, and use this to get relative workspace path if the
+    # file is specified in the symlink'd directory (e.g. Bazel runfiles).
     project_config['root_alternatives'] = root_alternatives
-    return project_config
+    # We must place this import here given that `Backend` is defined in this
+    # module.
+    from external_data_bazel import backends
+    project = Project(project_config, user, backends.get_default_backends())
+    return project
 
 
 class Project(object):
@@ -75,16 +69,20 @@ class Project(object):
         self._remote_is_loading = []
 
     def load_backend(self, backend_type, config):
+        """Loads a backend given the type and its configuration. """
         backend_cls = self._backends[backend_type]
         return backend_cls(config, self.root, self.user)
 
     def get_remote(self, name):
+        """Gets a remote by name, loading on demand. """
         remote = self._remotes.get(name)
         if remote:
             return remote
         # Check against dependency cycles.
         if name in self._remote_is_loading:
-            raise RuntimeError("'remote' cycle detected: {}".format(self._remote_is_loading))
+            raise RuntimeError(
+                "Cycle detected for 'remote': {}".format(
+                    self._remote_is_loading))
         self._remote_is_loading.append(name)
         # Load remote.
         remote_config = self.config['remotes'][name]
@@ -95,11 +93,12 @@ class Project(object):
         return remote
 
     def get_selected_remote(self):
+        """Gets the selected remote for the project. """
         return self.get_remote(self._remote_selected)
 
     def get_relpath(self, filepath):
-        """ Get filepah relative to project root, using alternative roots if viable.
-        @note This should be used for reading operations only! """
+        """Gets filepah relative to project root, using alternative roots if
+        viable. """
         assert os.path.isabs(filepath)
         root_paths = [self.root] + self._root_alternatives
         # WARNING: This will not handle a nest root!
@@ -110,18 +109,20 @@ class Project(object):
         raise RuntimeError("Path is not a child of given project")
 
     def get_hash_cache_path(self, hash, create_dir=False):
+        """Gets cache path for a given hashsum. """
         return _get_hash_cache_path(self.user.cache_dir, hash, create_dir)
 
 
 class User(object):
-    """Stores user-level configuration (including backend-specifics, if needed). """
+    """Stores user-level configuration. """
     def __init__(self, config):
         self.config = config
         self.cache_dir = os.path.expanduser(config['core']['cache_dir'])
 
 
 class HashFileFrontend(object):
-    """ Frontend to determine file information based on neighboring hash file. """
+    """ Frontend to determine file information based on neighboring hash file.
+    """
     def __init__(self, project):
         self.project = project
         self._hash_type = hashes.sha512
@@ -150,36 +151,38 @@ class HashFileFrontend(object):
         return input_file + self._suffix
 
     def get_file_info(self, input_file, must_have_hash=True):
+        """Gets file information from a given filepath. """
         assert os.path.isabs(input_file)
         hash_type, orig_filepath = self._infer_hash_type(input_file)
         hash_file = self._get_hash_file(orig_filepath)
         if not os.path.isfile(hash_file):
             if must_have_hash:
-                raise RuntimeError("ERROR: Hash file not found: {}".format(hash_file))
+                raise RuntimeError(
+                    "ERROR: Hash file not found: {}".format(hash_file))
             else:
                 hash = hash_type.create_empty()
+                hash.filepath = orig_filepath
         else:
             # Load the hash.
             with open(hash_file, 'r') as f:
-                hash = hash_type.create(f.read().strip(), filepath=orig_filepath)
+                hash = hash_type.create(
+                    f.read().strip(), filepath=orig_filepath)
         project_relpath = self.project.get_relpath(orig_filepath)
         remote = self.project.get_selected_remote()
         return FileInfo(hash, remote, project_relpath, orig_filepath)
 
     def update_file_info(self, info, hash):
         """Writes hashsum, updating hash filepath if needed. """
+        assert not hash.is_empty()
         assert hash.hash_type == self._hash_type
         hash_file = self._get_hash_file(info.orig_filepath)
-        if hash.filepath is not None:
-            assert hash.filepath == info.orig_filepath, "{} != {}".format(hash.filepath, info.orig_filepath)
-        else:
-            hash.filepath = info.orig_filepath
+        assert hash.filepath == info.orig_filepath
         with open(hash_file, 'w') as f:
             f.write(hash.get_value())
 
 
 class FileInfo(object):
-    """ Specifies general information for a given file. """
+    """Specifies general information for a given file. """
     def __init__(self, hash, remote, project_relpath, orig_filepath):
         # This is the *project* hash, NOT the has of the present file.
         # If None, then that means the file is not yet part of the project.
@@ -199,7 +202,7 @@ class FileInfo(object):
 
 
 class Remote(object):
-    """ Provides a cache-friendly and hierarchy-friendly access to a given remote. """
+    """Provides cache- and hierarchy-friendly access to a backend. """
     def __init__(self, config, name, project):
         self.config = config
         self.name = name
@@ -211,16 +214,12 @@ class Remote(object):
         if overlay_name is not None:
             self.overlay = self.project.get_remote(overlay_name)
 
-    def has_overlay(self):
-        """ Returns whether this remote is overlaying another. """
-        return self.overlay is not None
-
-    def has_file(self, hash, project_relpath, check_overlay=True):
+    def check_file(self, hash, project_relpath, check_overlay=True):
         """ Returns whether this remote (or its overlay) has a given SHA. """
-        if self._backend.has_file(hash, project_relpath):
+        if self._backend.check_file(hash, project_relpath):
             return True
-        elif check_overlay and self.has_overlay():
-            return self.overlay.has_file(hash, project_relpath)
+        elif check_overlay and self.overlay:
+            return self.overlay.check_file(hash, project_relpath)
 
     def _download_file_direct(self, hash, project_relpath, output_file):
         # Downloads a file directly and checks the SHA.
@@ -228,26 +227,30 @@ class Remote(object):
         assert not os.path.exists(output_file)
         try:
             self._backend.download_file(hash, project_relpath, output_file)
-            hash.check_file(output_file)
+            hash.compare_file(output_file)
         except util.DownloadError as e:
-            if self.has_overlay():
-                self.overlay._download_file_direct(hash, project_relpath, output_file)
+            if self.overlay:
+                self.overlay._download_file_direct(
+                    hash, project_relpath, output_file)
             else:
                 raise e
 
     def download_file(self, hash, project_relpath, output_file,
-                      use_cache = True, symlink = True):
-        """ Downloads a file.
+                      use_cache=True, symlink=True):
+        """Downloads a file.
         @param project_relpath
             @see Backend.download_file
         @param use_cache
-            Uses `project.user.cache_dir` as a cache. Normally, this is user-specified.
+            Uses `project.user.cache_dir` as a cache. Normally, this is
+            user-specified.
         @param symlink
             If `use_cache` is true, this will place a symlink to the read-only
             cache file at `output_file`.
         @returns 'cache' if there was a cachce hit, 'download' otherwise.
         """
         assert os.path.isabs(output_file)
+
+        # Helper functions.
 
         def download_file_direct(output_file):
             try:
@@ -256,62 +259,57 @@ class Remote(object):
                 sys.stderr.write("ERROR: For remote '{}'".format(self.name))
                 raise e
 
-        # Check if we need to download.
+        def get_cached(check_sha):
+            # Can use cache. Copy to output path.
+            if symlink:
+                util.subshell(['ln', '-s', cache_path, output_file])
+            else:
+                util.subshell(['cp', cache_path, output_file])
+                util.subshell(['chmod', '+w', output_file])
+            # On error, remove cached file, and re-download.
+            if check_sha:
+                if not hash.compare_file(output_file, do_throw=False):
+                    util.eprint("SHA-512 mismatch." +
+                                "Removing old cached file, re-downloading.")
+                    os.remove(cache_path)
+                    if os.path.islink(output_file):
+                        # In this situation, the cache was corrupted, and
+                        # Bazel recompilation, but the symlink is still in
+                        # Bazel-space. Remove the symlink, so that we do not
+                        # download into a symlink (which complicates the logic
+                        # in `download_and_cache`).
+                        os.remove(output_file)
+                    download_and_cache()
+
+        def download_and_cache():
+            # TODO(eric.cousineau): Consider locking the file.
+            download_file_direct(cache_path)
+            # Make cache file read-only.
+            util.subshell(['chmod', '-w', cache_path])
+            # Use cached file since `get_download()` has already checked the
+            # hash.
+            get_cached(False)
+
+        # Actions.
         if use_cache:
             cache_path = self.project.get_hash_cache_path(hash, create_dir=True)
-
-            # Helper functions.
-            def get_cached(skip_sha_check):
-                # Can use cache. Copy to output path.
-                if symlink:
-                    util.subshell(['ln', '-s', cache_path, output_file])
-                else:
-                    util.subshell(['cp', cache_path, output_file])
-                    util.subshell(['chmod', '+w', output_file])
-                # On error, remove cached file, and re-download.
-                if not skip_sha_check:
-                    if not hash.check_file(output_file, do_throw=False):
-                        util.eprint("SHA-512 mismatch. Removing old cached file, re-downloading.")
-                        # `os.remove()` will remove read-only files without prompting.
-                        os.remove(cache_path)
-                        if os.path.islink(output_file):
-                            # In this situation, the cache was corrupted (somehow), and Bazel
-                            # triggered a recompilation, and we still have a symlink in Bazel-space.
-                            # Remove this symlink, so that we do not download into a symlink (which
-                            # complicates the logic in `get_download_and_cache`). This also allows
-                            # us to "reset" permissions.
-                            os.remove(output_file)
-                        get_download_and_cache()
-
-            def get_download_and_cache():
-                with util.FileWriteLock(cache_path):
-                    download_file_direct(cache_path)
-                    # Make cache file read-only.
-                    util.subshell(['chmod', '-w', cache_path])
-                # Use cached file - `get_download()` has already checked the hash.
-                get_cached(True)
-
-            # TODO(eric.cousineau): This still isn't atomic, and may encounter a race condition...
-            util.wait_file_read_lock(cache_path)
             if os.path.isfile(cache_path):
-                get_cached(False)
+                get_cached(True)
                 return 'cache'
             else:
-                get_download_and_cache()
+                download_and_cache()
                 return 'download'
         else:
             download_file_direct(output_file)
             return 'download'
 
     def upload_file(self, hash_type, project_relpath, filepath):
-        """ Uploads a file (only if it does not already exist in this remote - NOT the backend),
-        and updates the corresponding hash file. """
+        """ Uploads a file. """
         assert os.path.isabs(filepath)
         hash = hash_type.compute(filepath)
-        # TODO(eric.cousineau): Have the project check if this is a valid hash type?
         if not self._backend.can_upload:
             raise RuntimeError("Backend does not support uploading")
-        if self._backend.has_file(hash, project_relpath):
+        if self._backend.check_file(hash, project_relpath):
             print("File already uploaded")
         else:
             self._backend.upload_file(hash, project_relpath, filepath)
@@ -319,25 +317,19 @@ class Remote(object):
 
 
 class Backend(object):
-    """ Downloads or uploads a file from a given storage mechanism given the hash file.
-    This also has access to the package (and indirectly, the project) to determine the
-    file path relative to the package as well. The project can be used to retrieve the
-    (if applicable), etc. """
+    """Checks, downloads, and uploads a file from a storage mechanism. """
     def __init__(self, config, project_root, user, can_upload):
         self.can_upload = can_upload
 
-    def has_file(self, hash, project_relpath):
-        """ Determines if the storage mechanism has a given SHA.
-        @note It is IMPORTANT that the 'hash' be prioritized.
-            It is OK if 'project_relpath' is not used, but 'hash' must be a critical part
-            of the check!!!"""
+    def check_file(self, hash, project_relpath):
+        """ Determines if the storage mechanism has a given SHA. """
         raise NotImplemented()
 
     def download_file(self, hash, project_relpath, output_path):
         """ Downloads a file from a given hash to a given output path.
         @param project_relpath
-            File path relative to project. May be None, depending on
-            how this is used (e.g. via CMake/ExternalData). """
+            File path relative to project.
+        """
         raise RuntimeError("Downloading not supported for this backend")
 
     def upload_file(self, hash, project_relpath, filepath):

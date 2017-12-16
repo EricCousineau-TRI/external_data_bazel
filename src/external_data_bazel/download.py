@@ -6,22 +6,29 @@ import yaml
 
 from external_data_bazel import core, util, config_helpers
 
-# TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if the files are really large.
 
 def add_arguments(parser):
-    # TODO(eric.cousineau): Consider making this interpret inputs/outputs as pairs.
-    parser.add_argument('-o', '--output', dest='output_file', type=str,
-                        help='Output destination. If specified, only one input file may be provided.')
-    parser.add_argument('input_files', type=str, nargs='+',
-                        help='Files to be downloaded. If --output is not provided, the output destination is inferred from the input path.')
-
-    parser.add_argument('-f', '--force', action='store_true',
-                        help='Overwrite existing output file.')
-
-    parser.add_argument('--no_cache', action='store_true',
-                        help='Always download, and do not cache the result.')
-    parser.add_argument('--symlink', action='store_true',
-                        help='Use a symlink from the cache rather than copying the file.')
+    # TODO(eric.cousineau): Consider making this interpret inputs/outputs as
+    # pairs.
+    # TODO(eric.cousineau): Make a `--quick` option to ignore checking SHAs, if
+    # performance is impacted.
+    parser.add_argument(
+        '-o', '--output', dest='output_file', type=str,
+        help='Output destination. If specified, only one input file may ' +
+             'be provided.')
+    parser.add_argument(
+        'input_files', type=str, nargs='+',
+        help='Files to be downloaded. If --output is not provided, the ' +
+             'output destination is inferred from the input path.')
+    parser.add_argument(
+        '-f', '--force', action='store_true',
+        help='Overwrite existing output file.')
+    parser.add_argument(
+        '--no_cache', action='store_true',
+        help='Always download, and do not cache the result.')
+    parser.add_argument(
+        '--symlink', action='store_true',
+        help='Use a symlink from the cache rather than copying the file.')
 
 
 def run(args, project):
@@ -59,14 +66,15 @@ def do_download(args, project, info, output_file):
 
     if args.verbose:
         yaml.dump(info.debug_config(), sys.stdout, default_flow_style=False)
-
     # Ensure that we do not overwrite existing files.
     if os.path.isfile(output_file):
         if args.force:
             os.remove(output_file)
         else:
-            raise RuntimeError("Output file already exists: {}".format(output_file) + "\n  (Use `--keep_going` to ignore or `--force` to overwrite.)")
-
+            raise RuntimeError(
+                "Output file already exists: {}".format(output_file) +
+                "\n  (Use `--keep_going` to ignore or `--force` to " +
+                "overwrite.)")
     download_type = remote.download_file(
         hash, project_relpath, output_file,
         use_cache=not args.no_cache,
