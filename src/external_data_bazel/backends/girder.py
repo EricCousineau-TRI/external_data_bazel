@@ -1,47 +1,11 @@
 from datetime import datetime
 import json
 import os
-import re
+import requests
 import yaml
 
 from external_data_bazel import util
 from external_data_bazel.core import Backend
-
-
-def action(api_url, endpoint_in, query = None, token = None, args = [], method = "GET"):
-    """ Lightweight REST call """
-    extra_args = []
-    if token:
-        extra_args += ["--header", "Girder-Token: {}".format(token)]
-    if method != "GET":
-        # https://serverfault.com/a/315852/443276
-        extra_args += ["-d", ""]
-    endpoint = format_qs(endpoint_in, query)
-    response_full = util.subshell([
-        "curl", "-X", method, "-s",
-            "--write-out", "\n%{http_code}",
-            "--header", "Accept: application/json"] + args + extra_args +
-        ["{}{}".format(api_url, endpoint)])
-    lines = response_full.splitlines()
-    response = "\n".join(lines[0:-1])
-    code = int(lines[-1])
-    if code >= 400:
-        raise RuntimeError("Bad response for: {}\n  {}".format(endpoint, response))
-    return json.loads(response)
-
-
-def format_qs(url, query):
-    from urllib import urlencode
-    if query:
-        jq = {}
-        for key, value in query.iteritems():
-            if isinstance(value, str):
-                jq[key] = value
-            else:
-                jq[key] = json.dumps(value)
-        return url + "?" + urlencode(jq)
-    else:
-        return url
 
 
 class GirderHashsumBackend(Backend):
@@ -63,8 +27,20 @@ class GirderHashsumBackend(Backend):
         # Cache configuration.
         self._config_cache_file = os.path.join(user.cache_dir, 'config', 'girder.yml')
 
-    def _action(self, *args, **kwargs):
-        return action(self._api_url, *args, token=self._token, **kwargs)
+    def _request(self, endpoint, params={}, token=None, method="get"):
+        def json_value(value):
+            if isinstance(value, str):
+                return value
+            else:
+                return json.dumps(value)
+        headers = {}
+        if token:
+            headers = {"Girder-Token": token}
+        params = {key: json_value(value) for key, value in params.iteritems()}
+        func = getattr(requests, method)
+        r = func(self._api_url + endpoint, params=params, headers=headers)
+        r.raise_for_status()
+        return r
 
     def _read_config_cache(self):
         if os.path.isfile(self._config_cache_file):
@@ -88,7 +64,7 @@ class GirderHashsumBackend(Backend):
         # Do this in `check_file`?
         if folder_id is None:
             self._authenticate_if_needed()
-            response = self._action('/resource/lookup', query = {"path": self._folder_path})
+            response = self._request('/resource/lookup', params={"path": self._folder_path}).json()
             assert response["_modelType"] == "folder"
             folder_id = str(response["_id"])
             util.set_chain(config_cache, key_chain, folder_id)
@@ -97,28 +73,16 @@ class GirderHashsumBackend(Backend):
 
     def _authenticate_if_needed(self):
         if self._api_key is not None and self._token is None:
-            response = self._action("/api_key/token", method = "POST", query = {"key": self._api_key})
+            response = self._request("/api_key/token", method="post", params={"key": self._api_key}).json()
             self._token = response["authToken"]["token"]
-
-    def _download_url(self, hash):
-        return "{api_url}/file/hashsum/{algo}/{hash}/download".format(algo=hash.get_algo(), hash=hash.get_value(), api_url=self._api_url)
-
-    def _download_args(self, hash):
-        url = self._download_url(hash)
-        self._authenticate_if_needed()
-        if self._token:
-            args = '-H "Girder-Token: {token}" "{url}"'.format(token=self._token, url=url)
-        else:
-            args = url
-        return args
 
     def _is_part_of_folder(self, hash):
         # Get files for the given hashsum.
-        files = self._action("/file/hashsum/{algo}/{hash}".format(algo=hash.get_algo(), hash=hash.get_value()))
+        files = self._request("/file/hashsum/{algo}/{hash}".format(algo=hash.get_algo(), hash=hash.get_value())).json()
         for file in files:
             id = file["_id"]
             # Get path.
-            path = self._action("/resource/{id}/path".format(id=id), query = {"type": "file"})
+            path = self._request("/resource/{id}/path".format(id=id), params={"type": "file"}).json()
             if path.startswith(self._folder_path + "/"):
                 return True
         return False
@@ -130,10 +94,12 @@ class GirderHashsumBackend(Backend):
     def download_file(self, hash, project_relpath, output_file):
         if not self.check_file(hash, project_relpath):
             raise util.DownloadError("File not available in Girder folder '{}': {} (hash: {})".format(self._folder_path, project_relpath, hash))
-        # Unfortunately, not having authentication does not yield user-friendly errors.
-        # Should fix this later.
-        args = self._download_args(hash)
-        util.curl("-L --progress-bar -o {output_file} {args}".format(args=args, output_file=output_file))
+        r = self._request("/file/hashsum/{algo}/{hash}/download"
+                          .format(algo=hash.get_algo(), hash=hash.get_value()))
+        f = open(output_file, 'wb')
+        with r, f:
+            for chunk in r.iter_content(chunk_size=1024):
+                f.write(chunk)
 
     def _get_girder_client(self):
         # @note We import girder_client here, as only uploading requires it at present.
