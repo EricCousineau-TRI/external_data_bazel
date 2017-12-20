@@ -4,32 +4,31 @@ set -x
 
 cd $(dirname $0)
 
-_bazel() {
-    bazel --bazelrc=/dev/null "$@"
+bazel() {
+    $(which bazel) --bazelrc=/dev/null "$@"
 }
 
 echo "[ Example Interface ]"
 (
     cd bazel_pkg_test
-    _bazel test //...
+    bazel test //...
 )
 
 echo "[ Downstream Consumption ]"
 (
     cd bazel_pkg_downstream_test
-    _bazel test //...
+    bazel test //...
 )
 
 echo "[ Mock Storage ]"
 (
     cd bazel_pkg_advanced_test
-    _bazel test //...
+    bazel test //...
 )
 
-echo "[ Edge Case Workflow ]"
+echo "[ Workflows ]"
 (
-    _bazel run :workflow_test
-    # _bazel test :workflow_test
+    bazel test --test_output=streamed :workflows_test
 )
 
 echo "[ Backends ]"
@@ -40,5 +39,3 @@ echo "[ Backends ]"
         ./run_tests.sh
     )
 )
-
-# TODO: Add CMake usage.

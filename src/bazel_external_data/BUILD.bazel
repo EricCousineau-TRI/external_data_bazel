@@ -1,3 +1,4 @@
+# @note 'core' has no backends present.
 py_library(
     name = "core",
     srcs = [
@@ -9,9 +10,6 @@ py_library(
     imports = [".."],
     visibility = ["//visibility:public"],
 )
-# @note 'core' has NO backends actually present.
-# This means that `core.load_project` will not work if no custom config is not used,
-# if only `core` is consumed.
 
 py_library(
     name = "cli_base",
@@ -28,7 +26,8 @@ py_library(
     visibility = ["//visibility:public"],
 )
 
-# Declare 'cli' in //:, to permit easier access to the binary from external repos.
+# Declare 'cli' in //:, to permit easier access to the binary from external
+# repos.
 exports_files(
     srcs = ["cli.py"],
 )

@@ -18,6 +18,7 @@ py_library(
     ],
 )
 
+# Declared here to permit easier access to `cli` from external projects.
 py_binary(
     name = "cli",
     srcs = [
