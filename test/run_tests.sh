@@ -28,8 +28,8 @@ echo "[ Mock Storage ]"
 
 echo "[ Edge Case Workflow ]"
 (
-    _bazel run :basic_workflows_test
-    # _bazel test :basic_workflows_test
+    _bazel run :workflow_test
+    # _bazel test :workflow_test
 )
 
 echo "[ Backends ]"

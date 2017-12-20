@@ -1,6 +1,6 @@
 sh_test(
-    name = "basic_workflows_test",
-    srcs = ["basic_workflows_test.sh"],
+    name = "workflow_test",
+    srcs = ["workflow_test.sh"],
     data = [
         # Consume the directory so that we may copy it.
         ":bazel_pkg_advanced_test",
