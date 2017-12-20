@@ -1,5 +1,5 @@
+import hashlib
 import os
-from external_data_bazel import util
 
 
 class HashType(object):
@@ -99,8 +99,16 @@ class Sha512(HashType):
         HashType.__init__(self, 'sha512')
 
     def do_compute(self, filepath):
-        value = util.subshell(['sha512sum', filepath]).split(' ')[0]
-        return value
+        # From girder/plugins/hashsum_download/server/__init__.py
+        chunk_len = 65536
+        digest = hashlib.sha512()
+        with open(filepath, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_len)
+                if not chunk:
+                    break
+                digest.update(chunk)
+        return digest.hexdigest()
 
 
 sha512 = Sha512()
