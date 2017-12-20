@@ -5,9 +5,9 @@ import os
 import yaml
 import argparse
 
-from external_data_bazel import config_helpers, download, upload, check
-from external_data_bazel.core import load_project
-from external_data_bazel.util import eprint, in_bazel_runfiles
+from bazel_external_data import config_helpers, download, upload, check
+from bazel_external_data.core import load_project
+from bazel_external_data.util import eprint, in_bazel_runfiles
 
 assert __name__ == '__main__'
 

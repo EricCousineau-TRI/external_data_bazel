@@ -13,7 +13,7 @@ should_fail() { eecho "Should have failed!"; exit 1; }
 # Clear out any old cache and upload in mock directory.
 # This is only important when running this test via `bazel run`.
 # @note This is hard-coded into the configuration files, and this *must* match.
-tmp_dir=/tmp/external_data_bazel
+tmp_dir=/tmp/bazel_external_data
 [[ -d ${tmp_dir} ]] && { eecho "Remove: ${tmp_dir}"; rm -rf ${tmp_dir}; }
 
 # Follow `WORKFLOWS.md`

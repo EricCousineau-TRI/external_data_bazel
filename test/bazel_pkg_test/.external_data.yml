@@ -7,4 +7,4 @@ remotes:
     master:
         backend: mock
         dir: mock
-        upload_dir: /tmp/external_data_bazel/upload
+        upload_dir: /tmp/bazel_external_data/upload

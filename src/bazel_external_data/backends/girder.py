@@ -4,8 +4,8 @@ import os
 import requests
 import yaml
 
-from external_data_bazel import util
-from external_data_bazel.core import Backend
+from bazel_external_data import util
+from bazel_external_data.core import Backend
 
 
 class GirderHashsumBackend(Backend):

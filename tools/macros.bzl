@@ -28,7 +28,7 @@ _TEST_SUFFIX = "__check_test"
 # @note This does NOT include 'external_data', so that running with
 # --test_tag_filters=external_data does not require a remote.
 _TEST_TAGS = ["external_data_check_test"]
-_TOOL = "@external_data_bazel_pkg//:cli"
+_TOOL = "@bazel_external_data_pkg//:cli"
 
 
 def _get_cli_base_args(filepath, settings):
@@ -203,7 +203,7 @@ def _external_data_check_test(file, settings):
         data = [hash_file, cli_sentinel] + cli_data,
         srcs = [_TOOL],
         main = _TOOL + ".py",
-        deps = ["@external_data_bazel_pkg//:cli_deps"],
+        deps = ["@bazel_external_data_pkg//:cli_deps"],
         args = args,
         tags = _TEST_TAGS + ["external"],
         # Changes `execroot`, and symlinks the files that we need to crawl the

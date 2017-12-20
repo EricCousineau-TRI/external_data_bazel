@@ -1,4 +1,4 @@
-All components of external_data_bazel are licensed under the BSD 3-Clause
+All components of bazel_external_data are licensed under the BSD 3-Clause
 License shown below. Where noted in the source code, some portions may 
 be subject to other permissive, non-viral licenses.
 

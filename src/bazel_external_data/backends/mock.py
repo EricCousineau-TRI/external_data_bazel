@@ -1,8 +1,8 @@
 import shutil
 import os
 
-from external_data_bazel import util, hashes
-from external_data_bazel.core import Backend
+from bazel_external_data import util, hashes
+from bazel_external_data.core import Backend
 
 
 class MockBackend(Backend):

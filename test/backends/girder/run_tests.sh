@@ -44,17 +44,17 @@ echo -e "client:\n${client}"
     out_dir=${cur_dir}/build
     mkdir -p ${out_dir}
     # Clear out.
-    rm -rf ${out_dir}/{external_data_bazel,bazel_pkg_girder_test}
+    rm -rf ${out_dir}/{bazel_external_data,bazel_pkg_girder_test}
     # Copy in local source directory.
     workspace_dir=../../..
-    tgt_dir=${out_dir}/external_data_bazel
+    tgt_dir=${out_dir}/bazel_external_data
     mkdir -p ${tgt_dir}
     cp -r ${workspace_dir}/{WORKSPACE,BUILD.bazel,src,tools} ${tgt_dir}/
     # Copy in test respository, remove cruft
     cp -r ./bazel_pkg_girder_test ${out_dir}
     cd ${out_dir}/bazel_pkg_girder_test
     rm -rf bazel-*
-    sed -i 's#path = .*,$#path = dirname(__workspace_dir__) + "/external_data_bazel",#g' WORKSPACE
+    sed -i 's#path = .*,$#path = dirname(__workspace_dir__) + "/bazel_external_data",#g' WORKSPACE
 )
 
 docker exec -t ${client} /mnt/setup_client.sh ${url} /mnt/build

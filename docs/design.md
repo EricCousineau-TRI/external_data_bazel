@@ -22,7 +22,7 @@ Please see document "Girder Storage for Drake" (not publicly available) for more
     * Since the Girder backends depend on `girder_client`, keep this as *system* dependency, rather than try to bake it in as a Bazel workspace repository.
     * Bazel does provide [importing `pip` dependencies](https://github.com/bazelbuild/rules_python#importing-pip-dependencies), but it requires a chain of dependent `load` statements, which would make consuming this as an external kind of suck.
         * (There could be something like `external_data_workspace_phase{1,2,3,...}`, but blech.)
-        * See [working prototype](https://github.com/EricCousineau-TRI/external_data_bazel/commit/db24e8ff5a21e54ab26f5d6c9da07207467efa10) (but without all downstream Bazel project tests working).
+        * See [working prototype](https://github.com/EricCousineau-TRI/bazel_external_data/commit/db24e8ff5a21e54ab26f5d6c9da07207467efa10) (but without all downstream Bazel project tests working).
 * Consider usage via `CMake/ExternalData`.
     * Project paths may not always be available for files.
     * Useful for `drake-shambhala`-type applications.

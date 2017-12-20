@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from external_data_bazel.util import subshell
+from bazel_external_data.util import subshell
 
 expected_files = {
     "master_files": [

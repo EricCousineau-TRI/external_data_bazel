@@ -7,9 +7,9 @@ remotes:
     master:
         backend: mock
         dir: mock/master_files
-        upload_dir: /tmp/external_data_bazel/upload
+        upload_dir: /tmp/bazel_external_data/upload
     extra:
         backend: mock
         dir: mock/extra_files
-        upload_dir: /tmp/external_data_bazel/upload_extra
+        upload_dir: /tmp/bazel_external_data/upload_extra
         overlay: master

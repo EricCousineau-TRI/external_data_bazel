@@ -8,7 +8,7 @@ py_test(
     name = "test_basics",
     srcs = ["test_basics.py"],
     deps = [
-        "@external_data_bazel_pkg//:core",
+        "@bazel_external_data_pkg//:core",
     ],
     data = [
         "//data",

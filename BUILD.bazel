@@ -2,26 +2,26 @@ package(default_visibility = ["//visibility:public"])
 
 alias(
     name = "core",
-    actual = "//src/external_data_bazel:core",
+    actual = "//src/bazel_external_data:core",
 )
 
 alias(
     name = "cli.py",
-    actual = "//src/external_data_bazel:cli.py",
+    actual = "//src/bazel_external_data:cli.py",
 )
 
 py_library(
     name = "cli_deps",
     deps = [
-        "//src/external_data_bazel:core",
-        "//src/external_data_bazel:cli_base",
+        "//src/bazel_external_data:core",
+        "//src/bazel_external_data:cli_base",
     ],
 )
 
 py_binary(
     name = "cli",
     srcs = [
-        "//src/external_data_bazel:cli.py",
+        "//src/bazel_external_data:cli.py",
     ],
     deps = [
         ":cli_deps",

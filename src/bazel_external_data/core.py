@@ -2,13 +2,13 @@ import os
 import shutil
 import stat
 
-from external_data_bazel import util, config_helpers, hashes
+from bazel_external_data import util, config_helpers, hashes
 
 PROJECT_CONFIG_FILE = ".external_data.yml"
-USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/external_data_bazel/config.yml")
+USER_CONFIG_FILE_DEFAULT = os.path.expanduser("~/.config/bazel_external_data/config.yml")
 USER_CONFIG_DEFAULT = {
     "core": {
-        "cache_dir": os.path.expanduser("~/.cache/external_data_bazel"),
+        "cache_dir": os.path.expanduser("~/.cache/bazel_external_data"),
     },
 }
 
@@ -47,7 +47,7 @@ def load_project(guess_filepath, project_name = None, user_config_file = None):
     project_config['root_alternatives'] = root_alternatives
     # We must place this import here given that `Backend` is defined in this
     # module.
-    from external_data_bazel import backends
+    from bazel_external_data import backends
     project = Project(project_config, user, backends.get_default_backends())
     return project
 

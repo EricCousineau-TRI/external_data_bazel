@@ -4,7 +4,7 @@ import os
 import sys
 import yaml
 
-from external_data_bazel import core, util, config_helpers
+from bazel_external_data import core, util, config_helpers
 
 
 def add_arguments(parser):

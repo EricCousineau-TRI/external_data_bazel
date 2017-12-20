@@ -7,7 +7,7 @@ py_library(
         "mock.py",
     ],
     deps = [
-        "//src/external_data_bazel:core",
+        "//src/bazel_external_data:core",
     ],
     imports = imports,
 )
@@ -30,5 +30,5 @@ py_library(
         ":girder",
     ],
     imports = imports,
-    visibility = ["//src/external_data_bazel:__subpackages__"],
+    visibility = ["//src/bazel_external_data:__subpackages__"],
 )

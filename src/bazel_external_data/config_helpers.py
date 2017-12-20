@@ -1,15 +1,15 @@
 """
 @file
 Helpers for configuration finding, specific to (a) general
-`external_data_bazel` configuration and (b) Bazel sandbox path reversal
-within `external_data_bazel`.
+`bazel_external_data` configuration and (b) Bazel sandbox path reversal
+within `bazel_external_data`.
 """
 
 import os
 import yaml
 import copy
 
-from external_data_bazel import util
+from bazel_external_data import util
 
 
 def guess_start_dir(filepath):

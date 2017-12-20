@@ -2,18 +2,18 @@
 
 ## Setup Project
 
-To enable `external_data_bazel` in a Project:
+To enable `bazel_external_data` in a Project:
 
 1. Add the project configuration (see [Setup](./setup.md)) to the project, and the root package configuration.
-2. Add `external_data_bazel` in your `WORKSPACE`.
+2. Add `bazel_external_data` in your `WORKSPACE`.
 
     As an example:
 
         http_archive(
-            name = "external_data_bazel_pkg",
-            url = "https://github.com/EricCousineau-TRI/external_data_bazel/archive/ce71398ac319cf4dedcf3eed3ae5c2c25e4eb1b4.zip",
+            name = "bazel_external_data_pkg",
+            url = "https://github.com/EricCousineau-TRI/bazel_external_data/archive/ce71398ac319cf4dedcf3eed3ae5c2c25e4eb1b4.zip",
             sha256 = "9f3ade94ee039f99074809da920d55fe7202e01e4861e9e76f0a5e0c7db39eb0",
-            strip_prefix = "external_data_bazel-ce71398ac319cf4dedcf3eed3ae5c2c25e4eb1b4",
+            strip_prefix = "bazel_external_data-ce71398ac319cf4dedcf3eed3ae5c2c25e4eb1b4",
         )
 
 
@@ -36,7 +36,7 @@ To enable `external_data_bazel` in a Project:
     2. Add `external_data.bzl`:
 
             # Pass through.
-            load("@external_data_bazel_pkg//tools:macros.bzl",
+            load("@bazel_external_data_pkg//tools:macros.bzl",
                 "external_data",
                 "external_data_group",
                 "get_original_files",
@@ -48,11 +48,11 @@ To enable `external_data_bazel` in a Project:
             set -e -u
             # Proxy to use Bazel binary, but with access to PWD.
             workspace_dir=$(cd $(dirname $0)/.. && pwd)
-            bin_dir=${workspace_dir}/bazel-bin/external/external_data_bazel_pkg
+            bin_dir=${workspace_dir}/bazel-bin/external/bazel_external_data_pkg
             bin=${bin_dir}/cli
             # Build the binary if it does not exist.
             if [[ ! -f ${bin} ]]; then
-                bazel build @external_data_bazel_pkg//:cli
+                bazel build @bazel_external_data_pkg//:cli
             fi
             # Execute.
             ${bin} "$@"

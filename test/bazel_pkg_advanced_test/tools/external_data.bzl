@@ -1,5 +1,5 @@
 # We will inject additional settings here.
-load("@external_data_bazel_pkg//tools:macros.bzl",
+load("@bazel_external_data_pkg//tools:macros.bzl",
     _external_data="external_data",
     _external_data_group="external_data_group",
     "get_original_files"
