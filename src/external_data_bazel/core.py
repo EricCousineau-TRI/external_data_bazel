@@ -1,4 +1,6 @@
 import os
+import shutil
+import stat
 
 from external_data_bazel import util, config_helpers, hashes
 
@@ -262,10 +264,12 @@ class Remote(object):
         def get_cached(check_sha):
             # Can use cache. Copy to output path.
             if symlink:
-                util.subshell(['ln', '-s', cache_path, output_file])
+                os.symlink(cache_path, output_file)
             else:
-                util.subshell(['cp', cache_path, output_file])
-                util.subshell(['chmod', '+w', output_file])
+                shutil.copy(cache_path, output_file)
+                # Ensure file is writeable.
+                mode_original = os.stat(output_file)[stat.ST_MODE]
+                os.chmod(output_file, mode_original | stat.S_IWUSR)
             # On error, remove cached file, and re-download.
             if check_sha:
                 if not hash.compare_file(output_file, do_throw=False):
@@ -285,7 +289,9 @@ class Remote(object):
             # TODO(eric.cousineau): Consider locking the file.
             download_file_direct(cache_path)
             # Make cache file read-only.
-            util.subshell(['chmod', '-w', cache_path])
+            mode_write_all = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+            mode_original = os.stat(cache_path)[stat.ST_MODE]
+            os.chmod(cache_path, mode_original & ~mode_write_all)
             # Use cached file since `get_download()` has already checked the
             # hash.
             get_cached(False)
