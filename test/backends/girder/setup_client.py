@@ -3,52 +3,38 @@
 import sys
 import json
 from base64 import b64encode
-import subprocess
 import time
-from urllib import urlencode
+import requests
 import yaml
 
 # To be run by `setup_client.sh`.
-
-def subshell(cmd, strip=True):
-    output = subprocess.check_output(cmd, shell=isinstance(cmd, str))
-    if strip:
-        return output.strip()
-    else:
-        return output
 
 auth = b64encode("admin:password")
 url, info_file, config_file, user_file = sys.argv[1:5]
 info_file = sys.argv[2]
 api_url = url + "/api/v1"
+token = None
 
-response = subshell([
-    "curl", "-X", "GET", "-s",
-        "--header", "Accept: application/json",
-        "--header", "Authorization: Basic {}".format(auth),
-    "{}/user/authentication".format(api_url)])
+def action(endpoint, params={}, headers=None, method="get", **kwargs):
+    def json_value(value):
+        if isinstance(value, str):
+            return value
+        else:
+            return json.dumps(value)
+    if headers is None:
+        headers = {}
+    if token:
+        headers.update({"Girder-Token": token})
+    params = {key: json_value(value) for key, value in params.iteritems()}
+    func = getattr(requests, method)
+    r = func(api_url + endpoint, params=params, headers=headers)
+    r.raise_for_status()
+    return r.json()
 
-token = json.loads(response)['authToken']['token']
+response = action("/user/authentication", headers = {"Authorization": "Basic {}".format(auth)})
+token = response['authToken']['token']
 
-def action(endpoint, args = [], method = "GET"):
-    extra_args = []
-    if method != "GET":
-        # https://serverfault.com/a/315852/443276
-        extra_args += ["-d", ""]
-    response_full = subshell([
-        "curl", "-X", method, "-s",
-            "--write-out", "\n%{http_code}",
-            "--header", "Accept: application/json",
-            "--header", "Girder-Token: {}".format(token)] + args + extra_args +
-        ["{}{}".format(api_url, endpoint)])
-    lines = response_full.splitlines()
-    response = "\n".join(lines[0:-1])
-    code = int(lines[-1])
-    if code >= 400:
-        raise RuntimeError("Bad response for: {}\n  {}".format(endpoint, response))
-    return json.loads(response)
-
-api_key = action('/api_key?active=true', method = "POST")['key']
+api_key = action("/api_key", params={"active": True}, method="post")['key']
 
 info = {
     "url": url,
@@ -95,12 +81,11 @@ if my_plugin not in plugins["all"]:
 enabled = plugins["enabled"]
 if my_plugin not in enabled:
     enabled.append(my_plugin)
-    qs = urlencode({"plugins": json.dumps(enabled)})
     print("Enable: {}".format(enabled))
-    response = action("/system/plugins?{}".format(qs), method = "PUT")
+    response = action("/system/plugins", {"plugins": json.dumps(enabled)}, method="put")
     print("Rebuilding...")
-    action("/system/web_build", method = "POST")
+    action("/system/web_build", method="post")
     print("Restarting...")
-    action("/system/restart", method = "PUT")
+    action("/system/restart", method = "put")
     time.sleep(1)
     print("[ Done ]")

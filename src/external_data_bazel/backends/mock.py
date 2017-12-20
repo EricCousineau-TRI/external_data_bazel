@@ -1,3 +1,4 @@
+import shutil
 import os
 
 from external_data_bazel import util, hashes
@@ -37,7 +38,7 @@ class MockBackend(Backend):
         filepath = self._map.get(hash)
         if filepath is None:
             raise util.DownloadError("Unknown hash: {}".format(hash))
-        util.subshell(['cp', filepath, output_file])
+        shutil.copy(filepath, output_file)
 
     def upload_file(self, hash, project_relpath, filepath):
         self._check_hash_type(hash)
@@ -48,6 +49,6 @@ class MockBackend(Backend):
         if not os.path.isdir(dest_dir):
             os.makedirs(dest_dir)
         # Copy the file.
-        util.subshell(['cp', filepath, dest])
+        shutil.copy(filepath, dest)
         # Store the SHA.
         self._map[hash] = dest

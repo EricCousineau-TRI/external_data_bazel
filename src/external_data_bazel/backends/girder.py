@@ -27,15 +27,15 @@ class GirderHashsumBackend(Backend):
         # Cache configuration.
         self._config_cache_file = os.path.join(user.cache_dir, 'config', 'girder.yml')
 
-    def _request(self, endpoint, params={}, token=None, method="get"):
+    def _request(self, endpoint, params={}, method="get"):
         def json_value(value):
             if isinstance(value, str):
                 return value
             else:
                 return json.dumps(value)
         headers = {}
-        if token:
-            headers = {"Girder-Token": token}
+        if self._token:
+            headers = {"Girder-Token": self._token}
         params = {key: json_value(value) for key, value in params.iteritems()}
         func = getattr(requests, method)
         r = func(self._api_url + endpoint, params=params, headers=headers)
