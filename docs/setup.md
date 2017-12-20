@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-For a client, you must have `curl` and a few other dependencies installed.
+For a basic client, you must base `python` and the `girder_client` installed.
 
 Please see [`client_prereqs.sh`](../test/backends/girder/docker/client_prereqs.sh) for `apt` packages.
 
